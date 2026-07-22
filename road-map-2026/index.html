@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Дорожная карта с учётом ресурсов — 2026–2027</title>
+<style>
+  :root{
+    --bg:#eef1f5; --panel:#fff; --ink:#1f2a37; --muted:#6b7686;
+    --grid:#e4e8ee; --grid2:#f0f3f7; --qline:#d4dae2; --today:#e0483d;
+    --c-analysis:#9aa2ae; --c-dev:#f6b93b; --c-test:#3fa85a; --c-done:#1a73e8;
+    --shadow:0 1px 3px rgba(20,30,50,.08),0 8px 22px rgba(20,30,50,.07);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif}
+  .page{max-width:1600px;margin:0 auto;padding:26px 22px 60px}
+  h1{font-size:24px;margin:0;letter-spacing:-.3px}
+  .sub{color:var(--muted);font-size:13px;margin:3px 0 0;max-width:1050px}
+  .cards{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0 6px}
+  .card{background:var(--panel);border-radius:11px;box-shadow:var(--shadow);padding:11px 15px;min-width:130px}
+  .card .n{font-size:21px;font-weight:700;line-height:1}
+  .card .l{font-size:11px;color:var(--muted);margin-top:4px}
+  .card.warn .n{color:var(--today)}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--muted);margin:16px 0 14px}
+  .legend .it{display:inline-flex;align-items:center;gap:7px}
+  .sw{width:34px;height:13px;border-radius:4px;display:inline-block}
+  .sw.grad{background:linear-gradient(90deg,var(--c-analysis) 0%,var(--c-analysis) 30%,var(--c-dev) 50%,var(--c-dev) 65%,var(--c-test) 85%,var(--c-test) 100%)}
+  .sw.done{background:var(--c-done)}
+  .todaymark{width:2px;height:15px;background:var(--today);display:inline-block;border-radius:2px}
+
+  .chartwrap{background:var(--panel);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+  .chart{overflow-x:auto}
+  .inner{position:relative;min-width:1400px;--gutter:396px}
+
+  .qrow{display:flex;height:26px;border-bottom:1px solid var(--grid);background:var(--panel)}
+  .morow{display:flex;height:28px;border-bottom:1px solid var(--grid);background:var(--panel)}
+  .gutcell{flex:0 0 var(--gutter,330px);width:var(--gutter,330px);max-width:var(--gutter,330px);box-sizing:border-box;background:var(--panel);position:sticky;left:0;z-index:9;border-right:1px solid var(--grid);
+    display:flex;align-items:center;padding:0 14px;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;overflow:hidden}
+  .qtl,.motl{position:relative;flex:1}
+  .q{position:absolute;top:0;height:26px;display:flex;align-items:center;justify-content:flex-start;
+    font-size:12px;font-weight:700;color:#3a4757;border-left:2px solid var(--qline);padding-left:8px;overflow:hidden;white-space:nowrap;box-sizing:border-box}
+  .q:first-child{border-left:none}
+  .mo{position:absolute;top:0;height:28px;display:flex;align-items:center;justify-content:flex-start;
+    font-size:11px;color:#6b7686;border-left:1px solid var(--grid);padding-left:6px;overflow:hidden;white-space:nowrap;box-sizing:border-box}
+
+  .rows{position:relative}
+  .grow{display:flex;align-items:stretch;height:40px;border-bottom:1px solid var(--grid2)}
+  .grow:nth-child(odd){background:#fbfcfe}
+  .grow:hover{background:#f6f9fc}
+  .lbl{flex:0 0 var(--gutter,330px);width:var(--gutter,330px);max-width:var(--gutter,330px);min-width:0;box-sizing:border-box;
+    display:flex;align-items:center;gap:8px;padding:0 12px;overflow:hidden;
+    border-right:1px solid var(--grid);position:sticky;left:0;background:inherit;z-index:3}
+  .rank{flex:0 0 20px;text-align:center;font-size:10px;font-weight:700;color:#98a2b0}
+  .code{flex:0 0 auto;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;font-weight:700;color:#3a4757;background:#eef1f5;padding:1px 6px;border-radius:5px;white-space:nowrap}
+  .tname{flex:1 1 auto;min-width:0;font-size:11.5px;line-height:1.2;color:#2a3542;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+    white-space:normal;word-break:break-word}
+  .track{position:relative;flex:1 1 auto;min-width:0}
+  .bar{position:absolute;top:10px;height:20px;border-radius:6px;box-shadow:0 1px 2px rgba(0,0,0,.15);overflow:hidden}
+  .seg-bar{position:absolute;top:10px;height:20px;border-radius:3px;box-shadow:0 1px 2px rgba(0,0,0,.13);display:flex;align-items:center;overflow:hidden;transition:box-shadow .15s,border-color .15s}
+  .gap-bar{position:absolute;top:13px;height:14px;border-radius:3px;display:flex;align-items:center;justify-content:center;
+    background:repeating-linear-gradient(45deg,#eef0f3,#eef0f3 5px,#e4e7ec 5px,#e4e7ec 10px);
+    border:1px dashed #c3c9d2;overflow:hidden;z-index:0}
+  .gap-bar span{font-size:9px;color:#8a93a0;white-space:nowrap;padding:0 5px;font-style:italic}
+  .gap-bar.weekend{background:repeating-linear-gradient(45deg,#f2f4f7,#f2f4f7 5px,#e9ecf1 5px,#e9ecf1 10px);border-color:#dde1e7}
+  .gap-bar.weekend span{display:none}
+  .gap-bar.vac{background:repeating-linear-gradient(45deg,#fde8dd,#fde8dd 5px,#f9dccb 5px,#f9dccb 10px);border-color:#e6a884}
+  .gap-bar.vac span{color:#b5714a}
+  .highlight-kuc .seg-bar.kuc{background:#e8890c !important;border:1.5px solid #9a5a00;box-shadow:0 0 0 2px rgba(232,137,12,.35),0 1px 3px rgba(154,90,0,.4);height:22px;top:9px}
+  .highlight-kuc .seg-bar.kuc .seg-cap{color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.3)}
+  .highlight-kuc .grow:has(.seg-bar.kuc){background:#fff7ec}
+  .seg-bar.done{opacity:.95}
+  .seg-bar.done::after{content:'';position:absolute;inset:0;
+    background:repeating-linear-gradient(45deg,rgba(255,255,255,.75),rgba(255,255,255,.75) 3px,rgba(255,255,255,0) 3px,rgba(255,255,255,0) 7px);
+    pointer-events:none}
+  .grow.done-row .lbl{opacity:.72}
+  .grow.done-row .code{background:#dfe3e9;color:#7a848f}
+  .seg-cap{font-size:9.5px;font-weight:600;color:#2a3542;padding:0 5px;white-space:nowrap;text-shadow:0 1px 0 rgba(255,255,255,.35)}
+  .rlabel{position:absolute;top:12px;font-size:10px;font-weight:600;color:#5a6673;white-space:nowrap;pointer-events:none}
+  .toggle .switch{width:34px;height:18px;border-radius:20px;background:#c7ccd4;position:relative;transition:background .18s;flex:0 0 auto}
+  .toggle .knob{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:left .18s}
+  .toggle input:checked + .switch{background:#e8890c}
+  .toggle input:checked + .switch .knob{left:18px}
+  .bar.done{background:var(--c-done)}
+  .bar.done::after{content:'✓';position:absolute;right:6px;top:2px;color:#fff;font-size:11px;font-weight:700}
+  .today{position:absolute;top:0;bottom:0;width:2px;background:var(--today);z-index:5;pointer-events:none}
+  .today .flag{position:absolute;top:-1px;left:0;transform:translateX(-42%);background:var(--today);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;white-space:nowrap}
+  .qgrid{position:absolute;top:0;bottom:0;width:2px;background:var(--qline);opacity:.5;z-index:0;pointer-events:none}
+  .foot{margin-top:14px;font-size:11.5px;color:var(--muted);line-height:1.55}
+  .tip{position:fixed;z-index:50;background:#1f2a37;color:#fff;font-size:12px;padding:9px 12px;border-radius:8px;max-width:340px;box-shadow:0 8px 24px rgba(0,0,0,.28);pointer-events:none;opacity:0;transition:opacity .12s;line-height:1.45}
+  .tip b{color:#ffd98a}
+  .tip .seg{color:#9fb6c9}
+  @media print{body,.page{background:#fff}.chart{overflow:visible}.inner{min-width:0}}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Дорожная карта претензионного контура — ресурсный план</h1>
+  <p class="sub">Топ-30 приоритетных задач + реализованные. Симуляция с учётом реальной загрузки команды и приоритета (баллов). Этапы: <b style="color:#7a828e">анализ</b> · <b style="color:#d99a1c">разработка</b> · <b style="color:#2e8b46">тест</b>. Учтён производственный календарь РФ (5/2 + праздники) и отпуска. Разработка: Куцепалов (аутстафф «Ракета», 8ч, с 20.07, отпуск 12–31.08) + Шуешкин (младший, 3ч). Аналитики: Чернышев (8ч, отпуск 14–27.09), Квитко (5ч, отпуск 3–16.08).</p>
+
+  <div class="cards">
+    <div class="card"><div class="n">2 + 2</div><div class="l">аналитика · разработчика</div></div>
+    <div class="card"><div class="n">12,8 / 10,4</div><div class="l">ч/день: анализ+тест / разраб</div></div>
+    <div class="card"><div class="n">30</div><div class="l">задач в этом плане</div></div>
+    <div class="card warn"><div class="n">окт 2026</div><div class="l">горизонт топ-30</div></div>
+    <div class="card warn"><div class="n">май 2027</div><div class="l">весь пул (84 задачи)</div></div>
+  </div>
+
+  <div class="legend">
+    <span class="it"><span class="sw" style="background:var(--c-analysis)"></span>Анализ</span>
+    <span class="it"><span class="sw" style="background:var(--c-dev)"></span>Разработка</span>
+    <span class="it"><span class="sw" style="background:var(--c-test)"></span>Тестирование</span>
+    <span class="it"><span class="todaymark"></span>Сегодня&nbsp;(<span id="todayLabel"></span>)</span>
+    <span class="it"><span class="sw" style="background:repeating-linear-gradient(45deg,#6aa84f,#6aa84f 3px,#ffffff 3px,#ffffff 6px);border:1px solid #4f8038"></span>Реализовано</span>
+    <span class="it"><span class="sw" style="background:repeating-linear-gradient(45deg,#eef0f3,#eef0f3 3px,#e4e7ec 3px,#e4e7ec 6px);border:1px dashed #c3c9d2"></span>Пауза (очередь / ожидание)</span>
+    <label class="it toggle" style="margin-left:8px;cursor:pointer;user-select:none">
+      <input type="checkbox" id="kucToggle" style="display:none">
+      <span class="switch"><span class="knob"></span></span>
+      <span>Выделить задачи Куцепалова <span style="color:#9a5a00;font-weight:600">(аутстафф «Ракета»)</span></span>
+    </label>
+    <label class="it" style="margin-left:8px;gap:6px">
+      🏢 <span>Заказчик:</span>
+      <select id="custFilter" style="font-size:12px;padding:3px 8px;border:1px solid #c3c9d2;border-radius:6px;background:#fff;color:#2a3542;cursor:pointer">
+        <option value="">Все</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="chartwrap"><div class="chart"><div class="inner" id="inner"></div></div></div>
+
+  <div class="foot">
+    * <b>Ресурсная модель:</b> Куцепалов — аутстафф «Ракета» (8ч/день, доступен с 20.07, отпуск 12–31.08); Шуешкин — младший (3ч/день). Аналитики Чернышев (8ч, отпуск 14–27.09) и Квитко (5ч, отпуск 3–16.08) ведут анализ+тест своей задачи, тест в приоритете. Учтён календарь РФ (5/2 + госпраздники). Отпуск исполнителя = пауза задачи. Трудоёмкость в часах.<br>
+    * Порядок запуска задач — строго по приоритету (сумма баллов заказчиков). Стадии внутри задачи идут последовательно: анализ → разработка → тест.<br>
+    * <span id="srcNote" style="color:#8a94a6">Загрузка данных…</span><br>
+    * <b>Узкое место:</b> основной ограничитель — разработка (Шуешкин лишь на 30%). Тест-приоритет аналитиков иногда сдвигает старт анализа новых задач. Даты — прогноз загрузки при идеальном следовании приоритету, не обязательства.
+  </div>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+const BASE='https://raw.githubusercontent.com/kvitkoas-sudo/tech366/main/road-map-2026/';
+const FILES={tasks:'tasks.csv',gaps:'gaps.csv',resources:'resources.csv'};
+
+// --- разбор CSV: разделитель ';', возможен BOM, кавычки по RFC4180 ---
+function parseCSV(text){
+  text=text.replace(/^\uFEFF/,'');
+  const rows=[];let row=[],cur='',q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){
+      if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; }
+      else cur+=c;
+    } else if(c==='"') q=true;
+    else if(c===';'){ row.push(cur);cur=''; }
+    else if(c==='\n'){ row.push(cur);cur='';rows.push(row);row=[]; }
+    else if(c!=='\r') cur+=c;
+  }
+  if(cur!==''||row.length){ row.push(cur);rows.push(row); }
+  if(!rows.length) return [];
+  const hdr=rows[0].map(s=>s.trim());
+  return rows.slice(1).filter(r=>r.some(x=>x!==''))
+             .map(r=>Object.fromEntries(hdr.map((k,i)=>[k,(r[i]||'').trim()])));
+}
+const num=s=>parseFloat(String(s).replace(',','.'))||0;
+// конец стадии в CSV инклюзивный, для отрисовки нужен эксклюзивный (+1 день)
+function excl(d){const x=new Date(d);x.setDate(x.getDate()+1);return x.toISOString().slice(0,10);}
+
+async function loadData(){
+  const bust='?t='+Date.now();
+  const [tRaw,gRaw,rRaw]=await Promise.all(
+    ['tasks','gaps','resources'].map(k=>
+      fetch(BASE+FILES[k]+bust).then(r=>{
+        if(!r.ok) throw new Error(FILES[k]+': HTTP '+r.status);
+        return r.text();
+      })));
+  const tasks=parseCSV(tRaw), gaps=parseCSV(gRaw), res=parseCSV(rRaw);
+
+  const gapsBy={};
+  gaps.forEach(g=>{ (gapsBy[g.jira]=gapsBy[g.jira]||[]).push([g.start,excl(g.end),g.label,g.kind]); });
+
+  const shortOf={};
+  res.forEach(r=>{ shortOf[r.fio]=r.short; });
+
+  const plan=tasks.map(t=>{
+    const seg={};
+    ['analysis','dev','test'].forEach(k=>{
+      const s=t[k+'_start'], e=t[k+'_end'], w=t[k+'_who'];
+      if(s&&e) seg[k]=[s,excl(e),w,shortOf[w]||String(w).split(' ')[0],e];
+    });
+    const split=(t.split||'').split('~').filter(Boolean).map(x=>{
+      const a=x.split('|'); return [a[0],a[1],excl(a[2])];
+    });
+    const o={row:+t.rank,jira:t.jira,name:t.name,status:t.status,score:+t.score,
+      start:t.start,end:excl(t.finish),disp_end:t.finish,seg:seg,
+      fixed:t.fixed==='1',hatch:t.hatch==='1',
+      customers:(t.customers||'').split(',').map(s=>s.trim()).filter(Boolean)};
+    if(split.length) o.split=split;
+    if(gapsBy[t.jira]) o.gaps=gapsBy[t.jira];
+    return o;
+  }).sort((a,b)=>b.score-a.score);
+
+  return {plan:plan,done:[],resources:res};
+}
+function render(D){
+  const GUTTER=396;
+  const stageColor={analysis:'#9aa2ae',dev:'#f6b93b',test:'#3fa85a'};
+  const stageName={analysis:'Анализ',dev:'Разработка',test:'Тест'};
+
+  // временной диапазон
+  const all=[...D.plan,...D.done];
+  let minD=new Date(Math.min(...all.map(t=>+new Date(t.start))));
+  let maxD=new Date(Math.max(...D.plan.map(t=>+new Date(t.end))));
+  // округлить к началу месяца / концу месяца
+  const START=new Date(minD.getFullYear(),minD.getMonth(),1);
+  const END=new Date(maxD.getFullYear(),maxD.getMonth()+1,1);
+  const _now=new Date();
+  const TODAY=new Date(_now.getFullYear(),_now.getMonth(),_now.getDate());
+  {
+    const _wd=['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'][TODAY.getDay()];
+    const _lbl=document.getElementById('todayLabel');
+    if(_lbl) _lbl.textContent=TODAY.toLocaleDateString('ru-RU')+', '+_wd;
+  }
+  const MS=86400000;
+  const span=(END-START)/MS;
+  function pct(d){return ((new Date(d))-START)/MS/span*100;}
+  function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+  const inner=document.getElementById('inner');
+  inner.style.setProperty('--gutter',GUTTER+'px');
+
+  // оси: кварталы + месяцы
+  let quarters=[],mos=[];
+  let m=new Date(START);
+  while(m<END){
+    const next=new Date(m.getFullYear(),m.getMonth()+1,1);
+    const nm=m.toLocaleDateString('ru-RU',{month:'short'});
+    mos.push({name:nm.replace('.',''),left:pct(m),width:pct(next)-pct(m)});
+    const q=Math.floor(m.getMonth()/3)+1, key=m.getFullYear()+'-Q'+q;
+    let qq=quarters.find(x=>x.key===key);
+    if(!qq){qq={key,label:'Q'+q+' '+m.getFullYear(),left:pct(m),right:pct(next)};quarters.push(qq);}
+    else qq.right=pct(next);
+    m=next;
+  }
+  let qhtml='<div class="qrow"><div class="gutcell">Задача · ранг</div><div class="qtl">';
+  quarters.forEach(q=>{qhtml+=`<div class="q" style="left:${q.left}%;width:${q.right-q.left}%">${q.label}</div>`;});
+  qhtml+='</div></div>';
+  let mhtml='<div class="morow"><div class="gutcell" style="text-transform:none;font-weight:600;color:#9aa2b0;font-size:11px">приоритет ↓</div><div class="motl">';
+  mos.forEach(mo=>{mhtml+=`<div class="mo" style="left:${mo.left}%;width:${mo.width}%">${mo.name}</div>`;});
+  mhtml+='</div></div>';
+
+  // строки
+  const stageOrder=['analysis','dev','test'];
+  let rowsHtml='<div class="rows">';
+  let rank=0;
+  D.plan.forEach(t=>{
+    rank++;
+    const dates=new Date(t.start).toLocaleDateString('ru-RU')+' – '+new Date(t.disp_end||t.end).toLocaleDateString('ru-RU');
+    const surname = w=>w?String(w).split(' ')[0]:'';
+    const segDetail=stageOrder.filter(s=>t.seg&&t.seg[s]).map(s=>`<span style="color:${stageColor[s]}">■</span> ${stageName[s]}: ${new Date(t.seg[s][0]).toLocaleDateString('ru-RU')} – ${new Date(t.seg[s][4]||t.seg[s][1]).toLocaleDateString('ru-RU')}${t.seg[s][2]?' · <b>'+esc(t.seg[s][2])+'</b>':''}`).join('<br>');
+    // отдельные цветные сегменты по каждой стадии, с подписью исполнителя
+    let segBars='';
+    stageOrder.forEach(s=>{
+      if(!t.seg||!t.seg[s])return;
+      const l=pct(t.seg[s][0]),r=pct(t.seg[s][1]),w=Math.max(0.6,r-l);
+      const who=t.seg[s][2]||'';
+      const shortWho=t.seg[s][3]||'';
+      const cap = (w>3.2 && who)? `<span class="seg-cap">${esc(surname(who))}</span>` : '';
+      // Куцепалов (аутстафф Ракета) — помечаем, подсветку включает переключатель
+      const isKuc = (s==='dev' && shortWho==='Куцепалов');
+      const cls = `seg-bar${isKuc?' kuc':''}${t.hatch?' done':''}`;
+      // разрыв полоски на отпуске исполнителя: рисуем стадию частями
+      const cuts=(t.split||[]).filter(x=>x[0]===s);
+      if(cuts.length){
+        let pieces=[[t.seg[s][0],t.seg[s][1]]];
+        cuts.forEach(c=>{
+          const out=[];
+          pieces.forEach(([ps,pe])=>{
+            if(c[2]<=ps||c[1]>=pe){out.push([ps,pe]);return;}
+            if(c[1]>ps)out.push([ps,c[1]]);
+            if(c[2]<pe)out.push([c[2],pe]);
+          });
+          pieces=out;
+        });
+        pieces.forEach(([ps,pe],i)=>{
+          const pl=pct(ps),pr=pct(pe),pw=Math.max(0.6,pr-pl);
+          const pcap=(pw>3.2&&who&&i===0)?`<span class="seg-cap">${esc(surname(who))}</span>`:'';
+          segBars+=`<div class="${cls}" style="left:${pl}%;width:${pw}%;background:${stageColor[s]}">${pcap}</div>`;
+        });
+      } else {
+        segBars+=`<div class="${cls}" style="left:${l}%;width:${w}%;background:${stageColor[s]}">${cap}</div>`;
+      }
+    });
+    // полоски-заполнители пауз (очередь на разработку / отпуск / ожидание)
+    let gapBars='';
+    (t.gaps||[]).forEach(g=>{
+      const l=pct(g[0]),r=pct(g[1]),w=Math.max(0.6,r-l);
+      const kind=g[3]||'queue';
+      const showText = w>7;
+      gapBars+=`<div class="gap-bar ${kind}" style="left:${l}%;width:${w}%" title="${esc(g[2])}">${(showText&&kind!=='weekend')?'<span>'+esc(g[2])+'</span>':''}</div>`;
+    });
+    // сводная подпись исполнителей справа от полосы (разработчик · аналитик)
+    const dev = t.seg&&t.seg.dev? surname(t.seg.dev[2]) : '';
+    const an  = t.seg&&(t.seg.test||t.seg.analysis)? surname((t.seg.test||t.seg.analysis)[2]) : '';
+    const rightPct = pct(t.end);
+    let people=[]; if(dev)people.push('💻'+dev); if(an)people.push('🔍'+an);
+    const rlabel = people.length? `<span class="rlabel" style="left:calc(${rightPct}% + 6px)">${esc(people.join(' · '))}</span>` : '';
+    // заказчики в тултип
+    const custDetail = (t.customers&&t.customers.length)? `<br>🏢 <b>Заказчик${t.customers.length>1?'и':''}:</b> ${esc(t.customers.join(', '))}` : '';
+    rowsHtml+=`<div class="grow${t.hatch?' done-row':''}" data-customers="${esc((t.customers||[]).join('|'))}">
+      <div class="lbl"><span class="rank">${rank}</span><span class="code">${esc(t.jira)}</span><span class="tname" title="${esc(t.name)}">${esc(t.name)}</span></div>
+      <div class="track" data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="${dates}" data-score="${t.score}" data-seg="${esc(segDetail)+custDetail}">${gapBars}${segBars}${rlabel}</div>
+    </div>`;
+  });
+  // реализованные — отдельным блоком снизу
+  D.done.forEach(t=>{
+    rank++;
+    const l=pct(t.start),r=pct(t.end),w=Math.max(1.4,r-l);
+    const dates=new Date(t.start).toLocaleDateString('ru-RU')+' – '+new Date(t.end).toLocaleDateString('ru-RU');
+    rowsHtml+=`<div class="grow">
+      <div class="lbl"><span class="rank">✓</span><span class="code">${esc(t.jira)}</span><span class="tname" title="${esc(t.name)}">${esc(t.name)}</span></div>
+      <div class="track"><div class="bar done" style="left:${l}%;width:${w}%"
+         data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="${dates}" data-score="${t.score||0}" data-seg="Реализовано"></div></div>
+    </div>`;
+  });
+  rowsHtml+='</div>';
+
+  inner.innerHTML=qhtml+mhtml+rowsHtml;
+
+  // overlay: линии кварталов + сегодня
+  const rowsEl=inner.querySelector('.rows');
+  rowsEl.style.position='relative';
+  const ov=document.createElement('div');
+  ov.style.cssText=`position:absolute;top:0;bottom:0;left:${GUTTER}px;right:0;pointer-events:none;z-index:2`;
+  quarters.forEach((q,i)=>{if(i>0){const g=document.createElement('div');g.className='qgrid';g.style.left=q.left+'%';ov.appendChild(g);}});
+  const _todayPct=pct(TODAY);
+  if(_todayPct>=0 && _todayPct<=100){
+    const tl=document.createElement('div');tl.className='today';tl.style.left=_todayPct+'%';
+    tl.innerHTML='<div class="flag">Сегодня</div>';ov.appendChild(tl);
+  }
+  rowsEl.appendChild(ov);
+
+  // тултип
+  const tip=document.getElementById('tip');
+  document.querySelectorAll('.track[data-code], .bar.done').forEach(b=>{
+    b.addEventListener('mousemove',ev=>{
+      tip.innerHTML=`<b>${b.dataset.code}</b> · приоритет ${b.dataset.score} б.<br>${b.dataset.name}<br>📅 ${b.dataset.dates}<br><span class="seg">${b.dataset.seg}</span>`;
+      tip.style.opacity=1;let x=ev.clientX+14,y=ev.clientY+14;
+      if(x+350>window.innerWidth)x=ev.clientX-350;tip.style.left=x+'px';tip.style.top=y+'px';
+    });
+    b.addEventListener('mouseleave',()=>tip.style.opacity=0);
+  });
+
+  // переключатель подсветки задач Куцепалова (аутстафф Ракета)
+  const kucToggle=document.getElementById('kucToggle');
+  if(kucToggle){
+    kucToggle.addEventListener('change',()=>{
+      document.querySelector('.inner').classList.toggle('highlight-kuc', kucToggle.checked);
+    });
+  }
+
+  // фильтр по заказчику
+  const custFilter=document.getElementById('custFilter');
+  if(custFilter){
+    // собрать уникальных заказчиков из данных
+    const allCust=new Set();
+    D.plan.forEach(t=>(t.customers||[]).forEach(c=>allCust.add(c)));
+    [...allCust].sort((a,b)=>a.localeCompare(b,'ru')).forEach(c=>{
+      const o=document.createElement('option');o.value=c;o.textContent=c;custFilter.appendChild(o);
+    });
+    custFilter.addEventListener('change',()=>{
+      const v=custFilter.value;
+      document.querySelectorAll('.rows .grow').forEach(row=>{
+        const custs=(row.dataset.customers||'').split('|').filter(Boolean);
+        const show = !v || custs.includes(v);
+        row.style.display = show? '' : 'none';
+      });
+    });
+  }
+
+}
+
+loadData().then(function(D){
+  render(D);
+  var f=document.getElementById('srcNote');
+  if(f) f.textContent='Данные из CSV (GitHub) · задач: '+D.plan.length;
+}).catch(function(e){
+  document.getElementById('inner').innerHTML=
+    '<div style="padding:28px;color:#b5714a;font:14px system-ui">'+
+    '<b>Не удалось загрузить данные.</b><br>'+
+    'Проверьте, что tasks.csv, gaps.csv и resources.csv лежат в '+
+    '<code>road-map-2026/</code> ветки main.<br><br>'+
+    '<span style="color:#888">'+String(e.message||e)+'</span></div>';
+  console.error(e);
+});
+</script>
+</body>
+</html>
