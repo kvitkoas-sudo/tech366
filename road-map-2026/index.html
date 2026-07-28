@@ -287,8 +287,7 @@ function render(D){
   mos.forEach(mo=>{mhtml+=`<div class="mo" style="left:${mo.left}%;width:${mo.width}%">${mo.name}</div>`;});
   mhtml+='</div></div>';
 
-  // сортировка строк: по дате старта, при равенстве — по баллам
-  D.plan = D.plan.slice().sort((a,b)=> a.start.localeCompare(b.start) || b.score-a.score );
+  // порядок строк уже задан в loadData (датированные по старту, затем без дат по баллам)
   // ссылка на задачу в Jira
   const JIRA='https://jira.366.ru/browse/';
   const codeLink = j => `<a class="code" href="${JIRA}${encodeURIComponent(j)}" target="_blank" rel="noopener" title="Открыть ${esc(j)} в Jira">${esc(j)}</a>`;
@@ -439,7 +438,7 @@ loadData().then(function(D){
   document.getElementById('inner').innerHTML=
     '<div style="padding:28px;color:#b5714a;font:14px system-ui">'+
     '<b>Не удалось загрузить данные.</b><br>'+
-    'Проверьте, что tasks.csv, gaps.csv и resources.csv лежат в '+
+    'Проверьте, что tasks.csv и resources.csv лежат в '+
     '<code>road-map-2026/</code> ветки main.<br><br>'+
     '<span style="color:#888">'+String(e.message||e)+'</span></div>';
   console.error(e);
