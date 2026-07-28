@@ -44,22 +44,23 @@
     font-size:11px;color:#6b7686;border-left:1px solid var(--grid);padding-left:6px;overflow:hidden;white-space:nowrap;box-sizing:border-box}
 
   .rows{position:relative}
-  .grow{display:flex;align-items:stretch;height:40px;border-bottom:1px solid var(--grid2)}
+  .grow{display:flex;align-items:stretch;height:52px;border-bottom:1px solid var(--grid2)}
   .grow:nth-child(odd){background:#fbfcfe}
   .grow:hover{background:#f6f9fc}
   .lbl{flex:0 0 var(--gutter,330px);width:var(--gutter,330px);max-width:var(--gutter,330px);min-width:0;box-sizing:border-box;
-    display:flex;align-items:center;gap:8px;padding:0 12px;overflow:hidden;
+    display:flex;flex-direction:column;justify-content:center;gap:2px;padding:4px 12px;overflow:hidden;
     border-right:1px solid var(--grid);position:sticky;left:0;background:inherit;z-index:3}
+  .lbl-top{display:flex;align-items:center;gap:8px;min-width:0}
+  .tmeta{font-size:9.5px;color:#7c8797;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:28px}
   .rank{flex:0 0 20px;text-align:center;font-size:10px;font-weight:700;color:#98a2b0}
   .code{flex:0 0 auto;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;font-weight:700;color:#3a4757;background:#eef1f5;padding:1px 6px;border-radius:5px;white-space:nowrap;text-decoration:none;transition:background .12s,color .12s}
   a.code:hover{background:#d7e3f2;color:#1b4f8f;text-decoration:underline}
   .tname{flex:1 1 auto;min-width:0;font-size:11.5px;line-height:1.2;color:#2a3542;
-    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-    white-space:normal;word-break:break-word}
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .track{position:relative;flex:1 1 auto;min-width:0}
-  .bar{position:absolute;top:10px;height:20px;border-radius:6px;box-shadow:0 1px 2px rgba(0,0,0,.15);overflow:hidden}
-  .seg-bar{position:absolute;top:10px;height:20px;border-radius:3px;box-shadow:0 1px 2px rgba(0,0,0,.13);display:flex;align-items:center;overflow:hidden;transition:box-shadow .15s,border-color .15s}
-  .gap-bar{position:absolute;top:13px;height:14px;border-radius:3px;display:flex;align-items:center;justify-content:center;
+  .bar{position:absolute;top:16px;height:20px;border-radius:6px;box-shadow:0 1px 2px rgba(0,0,0,.15);overflow:hidden}
+  .seg-bar{position:absolute;top:16px;height:20px;border-radius:3px;box-shadow:0 1px 2px rgba(0,0,0,.13);display:flex;align-items:center;overflow:hidden;transition:box-shadow .15s,border-color .15s}
+  .gap-bar{position:absolute;top:19px;height:14px;border-radius:3px;display:flex;align-items:center;justify-content:center;
     background:repeating-linear-gradient(45deg,#eef0f3,#eef0f3 5px,#e4e7ec 5px,#e4e7ec 10px);
     border:1px dashed #c3c9d2;overflow:hidden;z-index:0}
   .gap-bar span{font-size:9px;color:#8a93a0;white-space:nowrap;padding:0 5px;font-style:italic}
@@ -68,13 +69,13 @@
   .gap-bar.vac{background:repeating-linear-gradient(45deg,#fde8dd,#fde8dd 5px,#f9dccb 5px,#f9dccb 10px);border-color:#e6a884}
   .gap-bar.vac span{color:#b5714a}
   /* штриховка отпуска поверх стадии, только дни пересечения */
-  .vac-overlay{position:absolute;top:13px;height:14px;border-radius:2px;pointer-events:auto;z-index:3;
+  .vac-overlay{position:absolute;top:19px;height:14px;border-radius:2px;pointer-events:auto;z-index:3;
     background:repeating-linear-gradient(45deg,rgba(229,120,60,.55),rgba(229,120,60,.55) 3px,rgba(255,255,255,.15) 3px,rgba(255,255,255,.15) 6px);
     outline:1px solid rgba(197,90,40,.65)}
   /* задачи без дат — строка без полосок */
   .grow.undated{opacity:.9}
   .grow.undated .track{background:transparent}
-  .noplan{position:absolute;left:6px;top:11px;font-size:10px;color:#9aa4b2;font-style:italic;
+  .noplan{position:absolute;left:6px;top:17px;font-size:10px;color:#9aa4b2;font-style:italic;
     background:#f1f3f6;border:1px dashed #d3d9e0;border-radius:4px;padding:1px 8px}
   .highlight-kuc .seg-bar.kuc{background:#e8890c !important;border:1.5px solid #9a5a00;box-shadow:0 0 0 2px rgba(232,137,12,.35),0 1px 3px rgba(154,90,0,.4);height:22px;top:9px}
   .highlight-kuc .seg-bar.kuc .seg-cap{color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.3)}
@@ -349,17 +350,16 @@ function render(D){
       const l=pct(g[0]),r=pct(g[1]),w=Math.max(0.6,r-l);
       gapBars+=`<div class="vac-overlay" style="left:${l}%;width:${w}%" title="${esc(g[2])}"></div>`;
     });
-    // сводная подпись исполнителей справа от полосы (разработчик · аналитик)
-    const dev = t.seg&&t.seg.dev? surname(t.seg.dev[2]) : '';
-    const an  = t.seg&&(t.seg.test||t.seg.analysis)? surname((t.seg.test||t.seg.analysis)[2]) : '';
-    const rightPct = pct(t.end);
-    let people=[]; if(dev)people.push('💻'+dev); if(an)people.push('🔍'+an);
-    const rlabel = people.length? `<span class="rlabel" style="left:calc(${rightPct}% + 6px)">${esc(people.join(' · '))}</span>` : '';
+    // исполнители: все уникальные по стадиям в порядке анализ→разработка→тест
+    let whoList=[];
+    stageOrder.forEach(s=>{ if(t.seg&&t.seg[s]&&t.seg[s][2]){ const nm=surname(t.seg[s][2]); if(!whoList.includes(nm)) whoList.push(nm); } });
+    const dr=new Date(t.start).toLocaleDateString('ru-RU')+' – '+new Date(t.disp_end||t.end).toLocaleDateString('ru-RU');
+    const metaLine=`<div class="tmeta">${dr}${whoList.length?' · '+esc(whoList.join(' · ')):''}</div>`;
     // заказчики в тултип
     const custDetail = (t.customers&&t.customers.length)? `<br>🏢 <b>Заказчик${t.customers.length>1?'и':''}:</b> ${esc(t.customers.join(', '))}` : '';
     rowsHtml+=`<div class="grow${t.hatch?' done-row':''}" data-customers="${esc((t.customers||[]).join('|'))}">
-      <div class="lbl"><span class="rank">${rank}</span>${codeLink(t.jira)}<span class="tname" title="${esc(t.name)}">${esc(t.name)}</span></div>
-      <div class="track" data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="${dates}" data-score="${t.score}" data-seg="${esc(segDetail)+custDetail}">${segBars}${gapBars}${rlabel}</div>
+      <div class="lbl"><div class="lbl-top"><span class="rank">${rank}</span>${codeLink(t.jira)}<span class="tname" title="${esc(t.name)}">${esc(t.name)}</span></div>${metaLine}</div>
+      <div class="track" data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="${dates}" data-score="${t.score}" data-seg="${esc(segDetail)+custDetail}">${segBars}${gapBars}</div>
     </div>`;
   });
   // реализованные — отдельным блоком снизу
