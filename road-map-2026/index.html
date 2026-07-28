@@ -73,6 +73,7 @@
   .gap-bar.vacpause{background:#fdeadf;border:1px solid #efc4a6}
   .gap-bar.vacpause span{color:#b5714a;font-style:normal}
   .gap-bar.wait{background:repeating-linear-gradient(45deg,#f0f2f5,#f0f2f5 5px,#e7eaef 5px,#e7eaef 10px);border:1px dashed #cfd5dd}
+  .gap-bar.pause{background:#eef0f3;border:1px solid #e2e6ec}
   /* штриховка отпуска поверх стадии, только дни пересечения */
   .vac-overlay{position:absolute;top:24px;height:30px;border-radius:2px;pointer-events:auto;z-index:3;
     background:repeating-linear-gradient(45deg,rgba(229,120,60,.55),rgba(229,120,60,.55) 3px,rgba(255,255,255,.15) 3px,rgba(255,255,255,.15) 6px);
@@ -241,10 +242,11 @@ async function loadData(){
   });
 
   // сортировка: сначала с датами (по старту), потом без дат (по баллам)
-  const dated=plan.filter(t=>t.hasDates).sort((a,b)=> a.start.localeCompare(b.start) || b.score-a.score);
+  const doneT=plan.filter(t=>t.hasDates && t.hatch).sort((a,b)=> a.start.localeCompare(b.start));
+  const activeT=plan.filter(t=>t.hasDates && !t.hatch).sort((a,b)=> a.start.localeCompare(b.start));
   const undated=plan.filter(t=>!t.hasDates).sort((a,b)=> b.score-a.score);
 
-  return {plan:dated.concat(undated),done:[],resources:res,vac:vac};
+  return {plan:doneT.concat(activeT,undated),done:[],resources:res,vac:vac};
 }
 function render(D){
   const GUTTER=396;
@@ -343,10 +345,10 @@ function render(D){
         pieces.forEach(([ps,pe],i)=>{
           const pl=pct(ps),pr=pct(pe),pw=Math.max(0.6,pr-pl);
           const pcap=(pw>3.2&&who&&i===0)?`<span class="seg-cap">${esc(surname(who))}</span>`:'';
-          segBars+=`<div class="${cls}" style="left:${pl}%;width:${pw}%;background:${stageColor[s]};border:1px solid ${stageEdge[s]}">${pcap}</div>`;
+          segBars+=`<div class="${cls}" style="left:${pl}%;width:calc(${pw}% - 1px);background:${stageColor[s]};border:1px solid ${stageEdge[s]}">${pcap}</div>`;
         });
       } else {
-        segBars+=`<div class="${cls}" style="left:${l}%;width:${w}%;background:${stageColor[s]};border:1px solid ${stageEdge[s]}">${cap}</div>`;
+        segBars+=`<div class="${cls}" style="left:${l}%;width:calc(${w}% - 1px);background:${stageColor[s]};border:1px solid ${stageEdge[s]}">${cap}</div>`;
       }
     });
     // (а) подсветка отпуска ВНУТРИ стадии — штриховка поверх
@@ -355,48 +357,14 @@ function render(D){
       const l=pct(g[0]),r=pct(g[1]),w=Math.max(0.6,r-l);
       gapBars+=`<div class="vac-overlay" style="left:${l}%;width:${w}%" title="${esc(g[2])}"></div>`;
     });
-    // (б) паузы МЕЖДУ этапами: разрыв дробим посуточно на отпуск/выходные/ожидание
+    // (б) пауза МЕЖДУ этапами — один светло-серый блок на весь разрыв
     const stagesPresent=stageOrder.filter(s=>t.seg&&t.seg[s]);
     for(let i=0;i<stagesPresent.length-1;i++){
       const cur=t.seg[stagesPresent[i]], nxt=t.seg[stagesPresent[i+1]];
-      let gs=new Date(cur[1]); // excl-конец текущей = первый день паузы
-      const ge=new Date(nxt[0]); // старт следующей = конец паузы (excl)
-      if(gs>=ge) continue;
-      const whoNext=nxt[2], vNext=(D.vac||{})[whoNext];
-      const whoCur=cur[2], vCur=(D.vac||{})[whoCur];
-      // собираем посуточно тип каждого дня
-      let runs=[], day=new Date(gs);
-      function dayType(dt){
-        const iso=dt.toISOString().slice(0,10);
-        const wd=dt.getDay(); // 0 вс, 6 сб
-        // отпуск исполнителя следующей или текущей стадии
-        if(vNext&&iso>=vNext[0]&&iso<=vNext[1]) return {k:'vac',who:whoNext};
-        if(vCur&&iso>=vCur[0]&&iso<=vCur[1]) return {k:'vac',who:whoCur};
-        if(wd===0||wd===6) return {k:'weekend'};
-        return {k:'wait'};
-      }
-      while(day<ge){
-        const t0=dayType(day);
-        const key=t0.k+(t0.who||'');
-        if(runs.length&&runs[runs.length-1].key===key){ runs[runs.length-1].end=new Date(day); }
-        else { runs.push({key,k:t0.k,who:t0.who,start:new Date(day),end:new Date(day)}); }
-        day.setDate(day.getDate()+1);
-      }
-      runs.forEach(rn=>{
-        const a=rn.start.toISOString().slice(0,10);
-        const bEx=new Date(rn.end); bEx.setDate(bEx.getDate()+1);
-        const b=bEx.toISOString().slice(0,10);
-        const l=pct(a),r=pct(b),w=Math.max(0.5,r-l);
-        if(rn.k==='vac'){
-          const lbl='Отпуск '+surname(rn.who);
-          gapBars+=`<div class="gap-bar vacpause" style="left:${l}%;width:${w}%" title="${esc(lbl)}">${w>7?'<span>'+esc(lbl)+'</span>':''}</div>`;
-        } else if(rn.k==='weekend'){
-          gapBars+=`<div class="gap-bar weekend" style="left:${l}%;width:${w}%" title="Выходные"></div>`;
-        } else {
-          const lbl=(stagesPresent[i+1]==='dev')?'Очередь на разработку':'Ожидание';
-          gapBars+=`<div class="gap-bar wait" style="left:${l}%;width:${w}%" title="${esc(lbl)}">${w>7?'<span>'+esc(lbl)+'</span>':''}</div>`;
-        }
-      });
+      const a=cur[1], b=nxt[0]; // excl-конец текущей .. старт следующей
+      if(a>=b) continue;
+      const l=pct(a),r=pct(b),w=Math.max(0.5,r-l);
+      gapBars+=`<div class="gap-bar pause" style="left:${l}%;width:${w}%" title="Пауза"></div>`;
     }
     // исполнители: все уникальные по стадиям в порядке анализ→разработка→тест
     let whoList=[];
