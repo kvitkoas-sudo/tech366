@@ -67,6 +67,15 @@
   .gap-bar.weekend span{display:none}
   .gap-bar.vac{background:repeating-linear-gradient(45deg,#fde8dd,#fde8dd 5px,#f9dccb 5px,#f9dccb 10px);border-color:#e6a884}
   .gap-bar.vac span{color:#b5714a}
+  /* штриховка отпуска поверх стадии, только дни пересечения */
+  .vac-overlay{position:absolute;top:13px;height:14px;border-radius:2px;pointer-events:auto;z-index:3;
+    background:repeating-linear-gradient(45deg,rgba(229,120,60,.55),rgba(229,120,60,.55) 3px,rgba(255,255,255,.15) 3px,rgba(255,255,255,.15) 6px);
+    outline:1px solid rgba(197,90,40,.65)}
+  /* задачи без дат — строка без полосок */
+  .grow.undated{opacity:.9}
+  .grow.undated .track{background:transparent}
+  .noplan{position:absolute;left:6px;top:11px;font-size:10px;color:#9aa4b2;font-style:italic;
+    background:#f1f3f6;border:1px dashed #d3d9e0;border-radius:4px;padding:1px 8px}
   .highlight-kuc .seg-bar.kuc{background:#e8890c !important;border:1.5px solid #9a5a00;box-shadow:0 0 0 2px rgba(232,137,12,.35),0 1px 3px rgba(154,90,0,.4);height:22px;top:9px}
   .highlight-kuc .seg-bar.kuc .seg-cap{color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.3)}
   .highlight-kuc .grow:has(.seg-bar.kuc){background:#fff7ec}
@@ -140,18 +149,16 @@
 
 <script>
 const BASE='https://raw.githubusercontent.com/kvitkoas-sudo/tech366/main/road-map-2026/';
-const FILES={tasks:'tasks.csv',gaps:'gaps.csv',resources:'resources.csv'};
+const FILES={tasks:'tasks.csv',resources:'resources.csv'};
 
-// --- разбор CSV: разделитель ';', возможен BOM, кавычки по RFC4180 ---
+// --- разбор CSV: ';', BOM, кавычки ---
 function parseCSV(text){
   text=text.replace(/^\uFEFF/,'');
   const rows=[];let row=[],cur='',q=false;
   for(let i=0;i<text.length;i++){
     const c=text[i];
-    if(q){
-      if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; }
-      else cur+=c;
-    } else if(c==='"') q=true;
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
+    else if(c==='"') q=true;
     else if(c===';'){ row.push(cur);cur=''; }
     else if(c==='\n'){ row.push(cur);cur='';rows.push(row);row=[]; }
     else if(c!=='\r') cur+=c;
@@ -162,45 +169,76 @@ function parseCSV(text){
   return rows.slice(1).filter(r=>r.some(x=>x!==''))
              .map(r=>Object.fromEntries(hdr.map((k,i)=>[k,(r[i]||'').trim()])));
 }
-const num=s=>parseFloat(String(s).replace(',','.'))||0;
-// конец стадии в CSV инклюзивный, для отрисовки нужен эксклюзивный (+1 день)
-function excl(d){const x=new Date(d);x.setDate(x.getDate()+1);return x.toISOString().slice(0,10);}
+// ДД.ММ.ГГГГ или ISO -> ISO YYYY-MM-DD
+function toISO(s){
+  s=(s||'').trim(); if(!s) return '';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m=s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if(m) return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+  return s;
+}
+function excl(iso){const x=new Date(iso);x.setDate(x.getDate()+1);return x.toISOString().slice(0,10);}
+function eachWorkOrAll(a,b){ // список ISO-дней [a..b] включительно
+  const out=[];let x=new Date(a);const e=new Date(b);
+  while(x<=e){ out.push(x.toISOString().slice(0,10)); x.setDate(x.getDate()+1); }
+  return out;
+}
 
 async function loadData(){
   const bust='?t='+Date.now();
-  const [tRaw,gRaw,rRaw]=await Promise.all(
-    ['tasks','gaps','resources'].map(k=>
+  const [tRaw,rRaw]=await Promise.all(
+    ['tasks','resources'].map(k=>
       fetch(BASE+FILES[k]+bust).then(r=>{
         if(!r.ok) throw new Error(FILES[k]+': HTTP '+r.status);
         return r.text();
       })));
-  const tasks=parseCSV(tRaw), gaps=parseCSV(gRaw), res=parseCSV(rRaw);
+  const tasks=parseCSV(tRaw), res=parseCSV(rRaw);
 
-  const gapsBy={};
-  gaps.forEach(g=>{ (gapsBy[g.jira]=gapsBy[g.jira]||[]).push([g.start,excl(g.end),g.label,g.kind]); });
+  const shortOf={}, vac={};
+  res.forEach(r=>{
+    shortOf[r.fio]=r.short||String(r.fio).split(' ')[0];
+    if(r.vacation_start&&r.vacation_end) vac[r.fio]=[toISO(r.vacation_start),toISO(r.vacation_end)];
+  });
 
-  const shortOf={};
-  res.forEach(r=>{ shortOf[r.fio]=r.short; });
+  // пересечение [s..e] стадии с отпуском исполнителя -> массив [гс,ге(excl)] отрезков
+  function vacOverlap(who,s,e){
+    const v=vac[who]; if(!v) return null;
+    const a=s>v[0]?s:v[0], b=e<v[1]?e:v[1];
+    if(a>b) return null;
+    return [a,excl(b)];
+  }
 
   const plan=tasks.map(t=>{
-    const seg={};
+    const seg={}; let hasDates=false;
     ['analysis','dev','test'].forEach(k=>{
-      const s=t[k+'_start'], e=t[k+'_end'], w=t[k+'_who'];
-      if(s&&e) seg[k]=[s,excl(e),w,shortOf[w]||String(w).split(' ')[0],e];
+      const s=toISO(t[k+'_start']), e=toISO(t[k+'_end']), w=t[k+'_who'];
+      if(s&&e){ seg[k]=[s,excl(e),w,shortOf[w]||String(w).split(' ')[0],e]; hasDates=true; }
     });
-    const split=(t.split||'').split('~').filter(Boolean).map(x=>{
-      const a=x.split('|'); return [a[0],a[1],excl(a[2])];
+    // подсветка отпусков: отрезки внутри стадий, где исполнитель в отпуске
+    const gaps=[];
+    Object.keys(seg).forEach(k=>{
+      const ov=vacOverlap(seg[k][2],seg[k][0],seg[k][4]);
+      if(ov) gaps.push([ov[0],ov[1],'Отпуск '+seg[k][2],'vac']);
     });
-    const o={row:+t.rank,jira:t.jira,name:t.name,status:t.status,score:+t.score,
-      start:t.start,end:excl(t.finish),disp_end:t.finish,seg:seg,
+    const o={jira:t.jira,name:t.name,status:t.status,score:+t.score||0,
+      seg:seg,hasDates:hasDates,
       fixed:t.fixed==='1',hatch:t.hatch==='1',
       customers:(t.customers||'').split(',').map(s=>s.trim()).filter(Boolean)};
-    if(split.length) o.split=split;
-    if(gapsBy[t.jira]) o.gaps=gapsBy[t.jira];
+    if(hasDates){
+      const alls=Object.values(seg).flatMap(v=>[v[0],v[4]]);
+      o.start=alls.reduce((a,b)=>a<b?a:b);
+      o.disp_end=alls.reduce((a,b)=>a>b?a:b);
+      o.end=excl(o.disp_end);
+    }
+    if(gaps.length) o.gaps=gaps;
     return o;
-  }).sort((a,b)=>b.score-a.score);
+  });
 
-  return {plan:plan,done:[],resources:res};
+  // сортировка: сначала с датами (по старту), потом без дат (по баллам)
+  const dated=plan.filter(t=>t.hasDates).sort((a,b)=> a.start.localeCompare(b.start) || b.score-a.score);
+  const undated=plan.filter(t=>!t.hasDates).sort((a,b)=> b.score-a.score);
+
+  return {plan:dated.concat(undated),done:[],resources:res};
 }
 function render(D){
   const GUTTER=396;
@@ -208,9 +246,9 @@ function render(D){
   const stageName={analysis:'Анализ',dev:'Разработка',test:'Тест'};
 
   // временной диапазон
-  const all=[...D.plan,...D.done];
-  let minD=new Date(Math.min(...all.map(t=>+new Date(t.start))));
-  let maxD=new Date(Math.max(...D.plan.map(t=>+new Date(t.end))));
+  const dated=D.plan.filter(t=>t.hasDates);
+  let minD=new Date(Math.min(...dated.map(t=>+new Date(t.start))));
+  let maxD=new Date(Math.max(...dated.map(t=>+new Date(t.end))));
   // округлить к началу месяца / концу месяца
   const START=new Date(minD.getFullYear(),minD.getMonth(),1);
   const END=new Date(maxD.getFullYear(),maxD.getMonth()+1,1);
@@ -260,8 +298,17 @@ function render(D){
   let rank=0;
   D.plan.forEach(t=>{
     rank++;
-    const dates=new Date(t.start).toLocaleDateString('ru-RU')+' – '+new Date(t.disp_end||t.end).toLocaleDateString('ru-RU');
     const surname = w=>w?String(w).split(' ')[0]:'';
+    // задачи без дат — только строка в списке, без полосок на таймлайне
+    if(!t.hasDates){
+      const custDetail0=(t.customers&&t.customers.length)?`🏢 Заказчик${t.customers.length>1?'и':''}: ${esc(t.customers.join(', '))}`:'';
+      rowsHtml+=`<div class="grow undated" data-customers="${esc((t.customers||[]).join('|'))}">
+        <div class="lbl"><span class="rank">${rank}</span>${codeLink(t.jira)}<span class="tname" title="${esc(t.name)}">${esc(t.name)}</span></div>
+        <div class="track" data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="—" data-score="${t.score}" data-seg="Статус: ${esc(t.status)}${custDetail0?'<br>'+custDetail0:''}"><span class="noplan">${esc(t.status||'не запланировано')}</span></div>
+      </div>`;
+      return;
+    }
+    const dates=new Date(t.start).toLocaleDateString('ru-RU')+' – '+new Date(t.disp_end||t.end).toLocaleDateString('ru-RU');
     const segDetail=stageOrder.filter(s=>t.seg&&t.seg[s]).map(s=>`<span style="color:${stageColor[s]}">■</span> ${stageName[s]}: ${new Date(t.seg[s][0]).toLocaleDateString('ru-RU')} – ${new Date(t.seg[s][4]||t.seg[s][1]).toLocaleDateString('ru-RU')}${t.seg[s][2]?' · <b>'+esc(t.seg[s][2])+'</b>':''}`).join('<br>');
     // отдельные цветные сегменты по каждой стадии, с подписью исполнителя
     let segBars='';
@@ -297,12 +344,11 @@ function render(D){
       }
     });
     // полоски-заполнители пауз (очередь на разработку / отпуск / ожидание)
+    // подсветка отпуска: штриховка ПОВЕРХ стадии, только на дни пересечения
     let gapBars='';
     (t.gaps||[]).forEach(g=>{
       const l=pct(g[0]),r=pct(g[1]),w=Math.max(0.6,r-l);
-      const kind=g[3]||'queue';
-      const showText = w>7;
-      gapBars+=`<div class="gap-bar ${kind}" style="left:${l}%;width:${w}%" title="${esc(g[2])}">${(showText&&kind!=='weekend')?'<span>'+esc(g[2])+'</span>':''}</div>`;
+      gapBars+=`<div class="vac-overlay" style="left:${l}%;width:${w}%" title="${esc(g[2])}"></div>`;
     });
     // сводная подпись исполнителей справа от полосы (разработчик · аналитик)
     const dev = t.seg&&t.seg.dev? surname(t.seg.dev[2]) : '';
@@ -314,7 +360,7 @@ function render(D){
     const custDetail = (t.customers&&t.customers.length)? `<br>🏢 <b>Заказчик${t.customers.length>1?'и':''}:</b> ${esc(t.customers.join(', '))}` : '';
     rowsHtml+=`<div class="grow${t.hatch?' done-row':''}" data-customers="${esc((t.customers||[]).join('|'))}">
       <div class="lbl"><span class="rank">${rank}</span>${codeLink(t.jira)}<span class="tname" title="${esc(t.name)}">${esc(t.name)}</span></div>
-      <div class="track" data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="${dates}" data-score="${t.score}" data-seg="${esc(segDetail)+custDetail}">${gapBars}${segBars}${rlabel}</div>
+      <div class="track" data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="${dates}" data-score="${t.score}" data-seg="${esc(segDetail)+custDetail}">${segBars}${gapBars}${rlabel}</div>
     </div>`;
   });
   // реализованные — отдельным блоком снизу
@@ -388,7 +434,7 @@ function render(D){
 loadData().then(function(D){
   render(D);
   var f=document.getElementById('srcNote');
-  if(f) f.textContent='Данные из CSV (GitHub) · задач: '+D.plan.length;
+  if(f) f.textContent='Данные из tasks.csv · задач: '+D.plan.length+' (с датами: '+D.plan.filter(t=>t.hasDates).length+')';
 }).catch(function(e){
   document.getElementById('inner').innerHTML=
     '<div style="padding:28px;color:#b5714a;font:14px system-ui">'+
