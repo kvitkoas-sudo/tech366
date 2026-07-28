@@ -52,7 +52,7 @@
     display:flex;flex-direction:row;align-items:flex-start;gap:8px;padding:8px 12px;overflow:hidden;
     border-right:1px solid var(--grid);position:sticky;left:0;background:inherit;z-index:3}
   .lbl-col{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px}
-  .tmeta{font-size:9.5px;color:#7c8797;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tmeta{font-size:11px;color:#6a7686;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .rank{flex:0 0 20px;text-align:center;font-size:10px;font-weight:700;color:#98a2b0;line-height:1.4}
   .code{flex:0 0 auto;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;font-weight:700;color:#3a4757;background:#eef1f5;padding:1px 6px;border-radius:5px;white-space:nowrap;text-decoration:none;transition:background .12s,color .12s;margin-top:1px}
   a.code:hover{background:#d7e3f2;color:#1b4f8f;text-decoration:underline}
@@ -104,9 +104,9 @@
   .today .flag{position:absolute;top:-1px;left:0;transform:translateX(-42%);background:var(--today);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;white-space:nowrap}
   .qgrid{position:absolute;top:0;bottom:0;width:2px;background:var(--qline);opacity:.5;z-index:0;pointer-events:none}
   .foot{margin-top:14px;font-size:11.5px;color:var(--muted);line-height:1.55}
-  .tip{position:fixed;z-index:50;background:#1f2a37;color:#fff;font-size:12px;padding:9px 12px;border-radius:8px;max-width:340px;box-shadow:0 8px 24px rgba(0,0,0,.28);pointer-events:none;opacity:0;transition:opacity .12s;line-height:1.45}
-  .tip b{color:#ffd98a}
-  .tip .seg{color:#9fb6c9}
+  .tip{position:fixed;z-index:50;background:#f4f8fc;color:#2a3542;font-size:12px;padding:9px 12px;border-radius:8px;max-width:340px;border:1px solid #c9d9e8;box-shadow:0 8px 24px rgba(46,109,164,.18);pointer-events:none;opacity:0;transition:opacity .12s;line-height:1.45}
+  .tip b{color:#b06d00}
+  .tip .seg{color:#5f7488}
   @media print{body,.page{background:#fff}.chart{overflow:visible}.inner{min-width:0}}
 </style>
 </head>
@@ -318,6 +318,19 @@ function render(D){
     }
     const dates=new Date(t.start).toLocaleDateString('ru-RU')+' – '+new Date(t.disp_end||t.end).toLocaleDateString('ru-RU');
     const segDetail=stageOrder.filter(s=>t.seg&&t.seg[s]).map(s=>`<span style="color:${stageColor[s]}">■</span> ${stageName[s]}: ${new Date(t.seg[s][0]).toLocaleDateString('ru-RU')} – ${new Date(t.seg[s][4]||t.seg[s][1]).toLocaleDateString('ru-RU')}${t.seg[s][2]?' · <b>'+esc(t.seg[s][2])+'</b>':''}`).join('<br>');
+    // отпуск среди этапов -> в тултип
+    let vacDetail='';
+    if(t.gaps&&t.gaps.length){
+      const seen={};
+      t.gaps.forEach(g=>{
+        if(g[3]!=='vac')return;
+        const s=new Date(g[0]).toLocaleDateString('ru-RU');
+        const eD=new Date(g[1]); eD.setDate(eD.getDate()-1);
+        const e=eD.toLocaleDateString('ru-RU');
+        const line=`⏸ <b>${esc(g[2])}</b>: ${s} – ${e}`;
+        if(!seen[line]){ seen[line]=1; vacDetail+='<br>'+line; }
+      });
+    }
     // отдельные цветные сегменты по каждой стадии, с подписью исполнителя
     let segBars='';
     stageOrder.forEach(s=>{
@@ -345,10 +358,10 @@ function render(D){
         pieces.forEach(([ps,pe],i)=>{
           const pl=pct(ps),pr=pct(pe),pw=Math.max(0.6,pr-pl);
           const pcap=(pw>3.2&&who&&i===0)?`<span class="seg-cap">${esc(surname(who))}</span>`:'';
-          segBars+=`<div class="${cls}" style="left:${pl}%;width:calc(${pw}% - 1px);background:${stageColor[s]};border:1px solid ${stageEdge[s]}">${pcap}</div>`;
+          segBars+=`<div class="${cls}" style="left:${pl}%;width:${pw}%;background:${stageColor[s]};border:1px solid ${stageEdge[s]}">${pcap}</div>`;
         });
       } else {
-        segBars+=`<div class="${cls}" style="left:${l}%;width:calc(${w}% - 1px);background:${stageColor[s]};border:1px solid ${stageEdge[s]}">${cap}</div>`;
+        segBars+=`<div class="${cls}" style="left:${l}%;width:${w}%;background:${stageColor[s]};border:1px solid ${stageEdge[s]}">${cap}</div>`;
       }
     });
     // (а) подсветка отпуска ВНУТРИ стадии — штриховка поверх
@@ -375,7 +388,7 @@ function render(D){
     const custDetail = (t.customers&&t.customers.length)? `<br>🏢 <b>Заказчик${t.customers.length>1?'и':''}:</b> ${esc(t.customers.join(', '))}` : '';
     rowsHtml+=`<div class="grow${t.hatch?' done-row':''}" data-customers="${esc((t.customers||[]).join('|'))}">
       <div class="lbl"><span class="rank">${rank}</span>${codeLink(t.jira)}<div class="lbl-col"><span class="tname" title="${esc(t.name)}">${esc(t.name)}</span>${metaLine}</div></div>
-      <div class="track" data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="${dates}" data-score="${t.score}" data-seg="${esc(segDetail)+custDetail}">${segBars}${gapBars}</div>
+      <div class="track" data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="${dates}" data-score="${t.score}" data-seg="${esc(segDetail)+vacDetail+custDetail}">${segBars}${gapBars}</div>
     </div>`;
   });
   // реализованные — отдельным блоком снизу
