@@ -44,14 +44,14 @@
     font-size:11px;color:#6b7686;border-left:1px solid var(--grid);padding-left:6px;overflow:hidden;white-space:nowrap;box-sizing:border-box}
 
   .rows{position:relative}
-  .grow{display:flex;align-items:stretch;height:66px;border-bottom:1px solid var(--grid2)}
+  .grow{display:flex;align-items:stretch;height:78px;border-bottom:1px solid var(--grid2)}
   .grow:nth-child(odd){background:#fbfcfe}
   .grow:hover{background:#f6f9fc}
   .lbl{flex:0 0 var(--gutter,330px);width:var(--gutter,330px);max-width:var(--gutter,330px);min-width:0;box-sizing:border-box;
-    display:flex;flex-direction:column;justify-content:center;gap:2px;padding:4px 12px;overflow:hidden;
+    display:flex;flex-direction:row;align-items:flex-start;gap:8px;padding:8px 12px;overflow:hidden;
     border-right:1px solid var(--grid);position:sticky;left:0;background:inherit;z-index:3}
-  .lbl-top{display:flex;align-items:flex-start;gap:8px;min-width:0}
-  .tmeta{font-size:9.5px;color:#7c8797;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:28px}
+  .lbl-col{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px}
+  .tmeta{font-size:9.5px;color:#7c8797;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .rank{flex:0 0 20px;text-align:center;font-size:10px;font-weight:700;color:#98a2b0;line-height:1.4}
   .code{flex:0 0 auto;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;font-weight:700;color:#3a4757;background:#eef1f5;padding:1px 6px;border-radius:5px;white-space:nowrap;text-decoration:none;transition:background .12s,color .12s;margin-top:1px}
   a.code:hover{background:#d7e3f2;color:#1b4f8f;text-decoration:underline}
@@ -59,24 +59,27 @@
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
     white-space:normal;word-break:break-word}
   .track{position:relative;flex:1 1 auto;min-width:0}
-  .bar{position:absolute;top:23px;height:20px;border-radius:6px;box-shadow:0 1px 2px rgba(0,0,0,.15);overflow:hidden}
-  .seg-bar{position:absolute;top:23px;height:20px;border-radius:3px;box-shadow:0 1px 2px rgba(0,0,0,.13);display:flex;align-items:center;overflow:hidden;transition:box-shadow .15s,border-color .15s}
-  .gap-bar{position:absolute;top:26px;height:14px;border-radius:3px;display:flex;align-items:center;justify-content:center;
+  .bar{position:absolute;top:24px;height:30px;border-radius:6px;overflow:hidden;opacity:.85}
+  .seg-bar{position:absolute;top:24px;height:30px;border-radius:6px;display:flex;align-items:center;overflow:hidden;transition:box-shadow .15s,border-color .15s;opacity:.85}
+  .gap-bar{position:absolute;top:24px;height:30px;border-radius:6px;display:flex;align-items:center;justify-content:center;
     background:repeating-linear-gradient(45deg,#eef0f3,#eef0f3 5px,#e4e7ec 5px,#e4e7ec 10px);
     border:1px dashed #c3c9d2;overflow:hidden;z-index:0}
   .gap-bar span{font-size:9px;color:#8a93a0;white-space:nowrap;padding:0 5px;font-style:italic}
-  .gap-bar.weekend{background:repeating-linear-gradient(45deg,#f2f4f7,#f2f4f7 5px,#e9ecf1 5px,#e9ecf1 10px);border-color:#dde1e7}
+  .gap-bar.weekend{background:#eef0f3;border:1px solid #e2e6ec}
   .gap-bar.weekend span{display:none}
   .gap-bar.vac{background:repeating-linear-gradient(45deg,#fde8dd,#fde8dd 5px,#f9dccb 5px,#f9dccb 10px);border-color:#e6a884}
   .gap-bar.vac span{color:#b5714a}
+  .gap-bar.vacpause{background:#fdeadf;border:1px solid #efc4a6}
+  .gap-bar.vacpause span{color:#b5714a;font-style:normal}
+  .gap-bar.wait{background:repeating-linear-gradient(45deg,#f0f2f5,#f0f2f5 5px,#e7eaef 5px,#e7eaef 10px);border:1px dashed #cfd5dd}
   /* штриховка отпуска поверх стадии, только дни пересечения */
-  .vac-overlay{position:absolute;top:26px;height:14px;border-radius:2px;pointer-events:auto;z-index:3;
+  .vac-overlay{position:absolute;top:24px;height:30px;border-radius:2px;pointer-events:auto;z-index:3;
     background:repeating-linear-gradient(45deg,rgba(229,120,60,.55),rgba(229,120,60,.55) 3px,rgba(255,255,255,.15) 3px,rgba(255,255,255,.15) 6px);
     outline:1px solid rgba(197,90,40,.65)}
   /* задачи без дат — строка без полосок */
   .grow.undated{opacity:.9}
   .grow.undated .track{background:transparent}
-  .noplan{position:absolute;left:6px;top:24px;font-size:10px;color:#9aa4b2;font-style:italic;
+  .noplan{position:absolute;left:6px;top:30px;font-size:10px;color:#9aa4b2;font-style:italic;
     background:#f1f3f6;border:1px dashed #d3d9e0;border-radius:4px;padding:1px 8px}
   .highlight-kuc .seg-bar.kuc{background:#e8890c !important;border:1.5px solid #9a5a00;box-shadow:0 0 0 2px rgba(232,137,12,.35),0 1px 3px rgba(154,90,0,.4);height:22px;top:9px}
   .highlight-kuc .seg-bar.kuc .seg-cap{color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.3)}
@@ -240,11 +243,12 @@ async function loadData(){
   const dated=plan.filter(t=>t.hasDates).sort((a,b)=> a.start.localeCompare(b.start) || b.score-a.score);
   const undated=plan.filter(t=>!t.hasDates).sort((a,b)=> b.score-a.score);
 
-  return {plan:dated.concat(undated),done:[],resources:res};
+  return {plan:dated.concat(undated),done:[],resources:res,vac:vac};
 }
 function render(D){
   const GUTTER=396;
-  const stageColor={analysis:'#9aa2ae',dev:'#f6b93b',test:'#3fa85a'};
+  const stageColor={analysis:'#c3c9d4',dev:'#f6d08a',test:'#9dd6ac'};
+  const stageEdge={analysis:'#9aa2ae',dev:'#e0a83c',test:'#5cae74'};
   const stageName={analysis:'Анализ',dev:'Разработка',test:'Тест'};
 
   // временной диапазон
@@ -304,7 +308,7 @@ function render(D){
     if(!t.hasDates){
       const custDetail0=(t.customers&&t.customers.length)?`🏢 Заказчик${t.customers.length>1?'и':''}: ${esc(t.customers.join(', '))}`:'';
       rowsHtml+=`<div class="grow undated" data-customers="${esc((t.customers||[]).join('|'))}">
-        <div class="lbl"><div class="lbl-top"><span class="rank">${rank}</span>${codeLink(t.jira)}<span class="tname" title="${esc(t.name)}">${esc(t.name)}</span></div></div>
+        <div class="lbl"><span class="rank">${rank}</span>${codeLink(t.jira)}<div class="lbl-col"><span class="tname" title="${esc(t.name)}">${esc(t.name)}</span></div></div>
         <div class="track" data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="—" data-score="${t.score}" data-seg="Статус: ${esc(t.status)}${custDetail0?'<br>'+custDetail0:''}"><span class="noplan">${esc(t.status||'не запланировано')}</span></div>
       </div>`;
       return;
@@ -338,19 +342,61 @@ function render(D){
         pieces.forEach(([ps,pe],i)=>{
           const pl=pct(ps),pr=pct(pe),pw=Math.max(0.6,pr-pl);
           const pcap=(pw>3.2&&who&&i===0)?`<span class="seg-cap">${esc(surname(who))}</span>`:'';
-          segBars+=`<div class="${cls}" style="left:${pl}%;width:${pw}%;background:${stageColor[s]}">${pcap}</div>`;
+          segBars+=`<div class="${cls}" style="left:${pl}%;width:${pw}%;background:${stageColor[s]};border:1px solid ${stageEdge[s]}">${pcap}</div>`;
         });
       } else {
-        segBars+=`<div class="${cls}" style="left:${l}%;width:${w}%;background:${stageColor[s]}">${cap}</div>`;
+        segBars+=`<div class="${cls}" style="left:${l}%;width:${w}%;background:${stageColor[s]};border:1px solid ${stageEdge[s]}">${cap}</div>`;
       }
     });
-    // полоски-заполнители пауз (очередь на разработку / отпуск / ожидание)
-    // подсветка отпуска: штриховка ПОВЕРХ стадии, только на дни пересечения
+    // (а) подсветка отпуска ВНУТРИ стадии — штриховка поверх
     let gapBars='';
     (t.gaps||[]).forEach(g=>{
       const l=pct(g[0]),r=pct(g[1]),w=Math.max(0.6,r-l);
       gapBars+=`<div class="vac-overlay" style="left:${l}%;width:${w}%" title="${esc(g[2])}"></div>`;
     });
+    // (б) паузы МЕЖДУ этапами: разрыв дробим посуточно на отпуск/выходные/ожидание
+    const stagesPresent=stageOrder.filter(s=>t.seg&&t.seg[s]);
+    for(let i=0;i<stagesPresent.length-1;i++){
+      const cur=t.seg[stagesPresent[i]], nxt=t.seg[stagesPresent[i+1]];
+      let gs=new Date(cur[1]); // excl-конец текущей = первый день паузы
+      const ge=new Date(nxt[0]); // старт следующей = конец паузы (excl)
+      if(gs>=ge) continue;
+      const whoNext=nxt[2], vNext=(D.vac||{})[whoNext];
+      const whoCur=cur[2], vCur=(D.vac||{})[whoCur];
+      // собираем посуточно тип каждого дня
+      let runs=[], day=new Date(gs);
+      function dayType(dt){
+        const iso=dt.toISOString().slice(0,10);
+        const wd=dt.getDay(); // 0 вс, 6 сб
+        // отпуск исполнителя следующей или текущей стадии
+        if(vNext&&iso>=vNext[0]&&iso<=vNext[1]) return {k:'vac',who:whoNext};
+        if(vCur&&iso>=vCur[0]&&iso<=vCur[1]) return {k:'vac',who:whoCur};
+        if(wd===0||wd===6) return {k:'weekend'};
+        return {k:'wait'};
+      }
+      while(day<ge){
+        const t0=dayType(day);
+        const key=t0.k+(t0.who||'');
+        if(runs.length&&runs[runs.length-1].key===key){ runs[runs.length-1].end=new Date(day); }
+        else { runs.push({key,k:t0.k,who:t0.who,start:new Date(day),end:new Date(day)}); }
+        day.setDate(day.getDate()+1);
+      }
+      runs.forEach(rn=>{
+        const a=rn.start.toISOString().slice(0,10);
+        const bEx=new Date(rn.end); bEx.setDate(bEx.getDate()+1);
+        const b=bEx.toISOString().slice(0,10);
+        const l=pct(a),r=pct(b),w=Math.max(0.5,r-l);
+        if(rn.k==='vac'){
+          const lbl='Отпуск '+surname(rn.who);
+          gapBars+=`<div class="gap-bar vacpause" style="left:${l}%;width:${w}%" title="${esc(lbl)}">${w>7?'<span>'+esc(lbl)+'</span>':''}</div>`;
+        } else if(rn.k==='weekend'){
+          gapBars+=`<div class="gap-bar weekend" style="left:${l}%;width:${w}%" title="Выходные"></div>`;
+        } else {
+          const lbl=(stagesPresent[i+1]==='dev')?'Очередь на разработку':'Ожидание';
+          gapBars+=`<div class="gap-bar wait" style="left:${l}%;width:${w}%" title="${esc(lbl)}">${w>7?'<span>'+esc(lbl)+'</span>':''}</div>`;
+        }
+      });
+    }
     // исполнители: все уникальные по стадиям в порядке анализ→разработка→тест
     let whoList=[];
     stageOrder.forEach(s=>{ if(t.seg&&t.seg[s]&&t.seg[s][2]){ const nm=surname(t.seg[s][2]); if(!whoList.includes(nm)) whoList.push(nm); } });
@@ -359,7 +405,7 @@ function render(D){
     // заказчики в тултип
     const custDetail = (t.customers&&t.customers.length)? `<br>🏢 <b>Заказчик${t.customers.length>1?'и':''}:</b> ${esc(t.customers.join(', '))}` : '';
     rowsHtml+=`<div class="grow${t.hatch?' done-row':''}" data-customers="${esc((t.customers||[]).join('|'))}">
-      <div class="lbl"><div class="lbl-top"><span class="rank">${rank}</span>${codeLink(t.jira)}<span class="tname" title="${esc(t.name)}">${esc(t.name)}</span></div>${metaLine}</div>
+      <div class="lbl"><span class="rank">${rank}</span>${codeLink(t.jira)}<div class="lbl-col"><span class="tname" title="${esc(t.name)}">${esc(t.name)}</span>${metaLine}</div></div>
       <div class="track" data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="${dates}" data-score="${t.score}" data-seg="${esc(segDetail)+custDetail}">${segBars}${gapBars}</div>
     </div>`;
   });
@@ -369,7 +415,7 @@ function render(D){
     const l=pct(t.start),r=pct(t.end),w=Math.max(1.4,r-l);
     const dates=new Date(t.start).toLocaleDateString('ru-RU')+' – '+new Date(t.end).toLocaleDateString('ru-RU');
     rowsHtml+=`<div class="grow">
-      <div class="lbl"><div class="lbl-top"><span class="rank">✓</span>${codeLink(t.jira)}<span class="tname" title="${esc(t.name)}">${esc(t.name)}</span></div></div>
+      <div class="lbl"><span class="rank">✓</span>${codeLink(t.jira)}<div class="lbl-col"><span class="tname" title="${esc(t.name)}">${esc(t.name)}</span></div></div>
       <div class="track"><div class="bar done" style="left:${l}%;width:${w}%"
          data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="${dates}" data-score="${t.score||0}" data-seg="Реализовано"></div></div>
     </div>`;
