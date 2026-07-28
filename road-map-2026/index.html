@@ -303,7 +303,7 @@ function render(D){
     if(!t.hasDates){
       const custDetail0=(t.customers&&t.customers.length)?`🏢 Заказчик${t.customers.length>1?'и':''}: ${esc(t.customers.join(', '))}`:'';
       rowsHtml+=`<div class="grow undated" data-customers="${esc((t.customers||[]).join('|'))}">
-        <div class="lbl"><span class="rank">${rank}</span>${codeLink(t.jira)}<span class="tname" title="${esc(t.name)}">${esc(t.name)}</span></div>
+        <div class="lbl"><div class="lbl-top"><span class="rank">${rank}</span>${codeLink(t.jira)}<span class="tname" title="${esc(t.name)}">${esc(t.name)}</span></div></div>
         <div class="track" data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="—" data-score="${t.score}" data-seg="Статус: ${esc(t.status)}${custDetail0?'<br>'+custDetail0:''}"><span class="noplan">${esc(t.status||'не запланировано')}</span></div>
       </div>`;
       return;
@@ -368,7 +368,7 @@ function render(D){
     const l=pct(t.start),r=pct(t.end),w=Math.max(1.4,r-l);
     const dates=new Date(t.start).toLocaleDateString('ru-RU')+' – '+new Date(t.end).toLocaleDateString('ru-RU');
     rowsHtml+=`<div class="grow">
-      <div class="lbl"><span class="rank">✓</span>${codeLink(t.jira)}<span class="tname" title="${esc(t.name)}">${esc(t.name)}</span></div>
+      <div class="lbl"><div class="lbl-top"><span class="rank">✓</span>${codeLink(t.jira)}<span class="tname" title="${esc(t.name)}">${esc(t.name)}</span></div></div>
       <div class="track"><div class="bar done" style="left:${l}%;width:${w}%"
          data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="${dates}" data-score="${t.score||0}" data-seg="Реализовано"></div></div>
     </div>`;
