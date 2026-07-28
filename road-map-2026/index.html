@@ -8,7 +8,8 @@
   :root{
     --bg:#eef1f5; --panel:#fff; --ink:#1f2a37; --muted:#6b7686;
     --grid:#e4e8ee; --grid2:#f0f3f7; --qline:#d4dae2; --today:#e0483d;
-    --c-analysis:#9aa2ae; --c-dev:#f6b93b; --c-test:#3fa85a; --c-done:#1a73e8;
+    --c-analysis:#d9e5ef; --c-dev:#f4dfbc; --c-test:#d9efdf; --c-done:#1a73e8;
+    --e-analysis:#2e6da4; --e-dev:#d88a0a; --e-test:#3fa85a;
     --shadow:0 1px 3px rgba(20,30,50,.08),0 8px 22px rgba(20,30,50,.07);
   }
   *{box-sizing:border-box}
@@ -59,8 +60,8 @@
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
     white-space:normal;word-break:break-word}
   .track{position:relative;flex:1 1 auto;min-width:0}
-  .bar{position:absolute;top:24px;height:30px;border-radius:6px;overflow:hidden;opacity:.85}
-  .seg-bar{position:absolute;top:24px;height:30px;border-radius:6px;display:flex;align-items:center;overflow:hidden;transition:box-shadow .15s,border-color .15s;opacity:.85}
+  .bar{position:absolute;top:24px;height:30px;border-radius:6px;overflow:hidden}
+  .seg-bar{position:absolute;top:24px;height:30px;border-radius:6px;display:flex;align-items:center;overflow:hidden;transition:box-shadow .15s,border-color .15s}
   .gap-bar{position:absolute;top:24px;height:30px;border-radius:6px;display:flex;align-items:center;justify-content:center;
     background:repeating-linear-gradient(45deg,#eef0f3,#eef0f3 5px,#e4e7ec 5px,#e4e7ec 10px);
     border:1px dashed #c3c9d2;overflow:hidden;z-index:0}
@@ -122,9 +123,9 @@
   </div>
 
   <div class="legend">
-    <span class="it"><span class="sw" style="background:var(--c-analysis)"></span>Анализ</span>
-    <span class="it"><span class="sw" style="background:var(--c-dev)"></span>Разработка</span>
-    <span class="it"><span class="sw" style="background:var(--c-test)"></span>Тестирование</span>
+    <span class="it"><span class="sw" style="background:var(--c-analysis);border:1px solid var(--e-analysis)"></span>Анализ</span>
+    <span class="it"><span class="sw" style="background:var(--c-dev);border:1px solid var(--e-dev)"></span>Разработка</span>
+    <span class="it"><span class="sw" style="background:var(--c-test);border:1px solid var(--e-test)"></span>Тестирование</span>
     <span class="it"><span class="todaymark"></span>Сегодня&nbsp;(<span id="todayLabel"></span>)</span>
     <span class="it"><span class="sw" style="background:repeating-linear-gradient(45deg,#6aa84f,#6aa84f 3px,#ffffff 3px,#ffffff 6px);border:1px solid #4f8038"></span>Реализовано</span>
     <span class="it"><span class="sw" style="background:repeating-linear-gradient(45deg,#eef0f3,#eef0f3 3px,#e4e7ec 3px,#e4e7ec 6px);border:1px dashed #c3c9d2"></span>Пауза (очередь / ожидание)</span>
@@ -247,8 +248,8 @@ async function loadData(){
 }
 function render(D){
   const GUTTER=396;
-  const stageColor={analysis:'#c3c9d4',dev:'#f6d08a',test:'#9dd6ac'};
-  const stageEdge={analysis:'#9aa2ae',dev:'#e0a83c',test:'#5cae74'};
+  const stageColor={analysis:'#d9e5ef',dev:'#f4dfbc',test:'#d9efdf'};
+  const stageEdge={analysis:'#2e6da4',dev:'#d88a0a',test:'#3fa85a'};
   const stageName={analysis:'Анализ',dev:'Разработка',test:'Тест'};
 
   // временной диапазон
