@@ -90,6 +90,10 @@
   .seg-bar.done::after{content:'';position:absolute;inset:0;
     background:repeating-linear-gradient(45deg,rgba(255,255,255,.75),rgba(255,255,255,.75) 3px,rgba(255,255,255,0) 3px,rgba(255,255,255,0) 7px);
     pointer-events:none}
+  /* выполненная задача: пауза тоже штрихуется (тёмная диагональ поверх светло-серого фона) */
+  .gap-bar.pause.done::after{content:'';position:absolute;inset:0;
+    background:repeating-linear-gradient(45deg,rgba(120,130,145,.32),rgba(120,130,145,.32) 3px,rgba(120,130,145,0) 3px,rgba(120,130,145,0) 7px);
+    pointer-events:none}
   .grow.done-row .lbl{opacity:.72}
   .grow.done-row .code{background:#dfe3e9;color:#7a848f}
   .seg-cap{font-size:9.5px;font-weight:600;color:#2a3542;padding:0 5px;white-space:nowrap;text-shadow:0 1px 0 rgba(255,255,255,.35)}
@@ -377,7 +381,7 @@ function render(D){
       const a=cur[1], b=nxt[0]; // excl-конец текущей .. старт следующей
       if(a>=b) continue;
       const l=pct(a),r=pct(b),w=Math.max(0.5,r-l);
-      gapBars+=`<div class="gap-bar pause" style="left:${l}%;width:${w}%"></div>`;
+      gapBars+=`<div class="gap-bar pause${t.hatch?' done':''}" style="left:${l}%;width:${w}%"></div>`;
     }
     // Оформление ряда блоков (этапы + паузы), считая по геометрии left/width:
     //  - скругляем только крайний левый (левые углы) и крайний правый (правые углы);
