@@ -311,7 +311,7 @@ function render(D){
     if(!t.hasDates){
       const custDetail0=(t.customers&&t.customers.length)?`🏢 Заказчик${t.customers.length>1?'и':''}: ${esc(t.customers.join(', '))}`:'';
       rowsHtml+=`<div class="grow undated" data-customers="${esc((t.customers||[]).join('|'))}">
-        <div class="lbl"><span class="rank">${rank}</span>${codeLink(t.jira)}<div class="lbl-col"><span class="tname" title="${esc(t.name)}">${esc(t.name)}</span></div></div>
+        <div class="lbl"><span class="rank">${rank}</span>${codeLink(t.jira)}<div class="lbl-col"><span class="tname">${esc(t.name)}</span></div></div>
         <div class="track" data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="—" data-score="${t.score}" data-seg="Статус: ${esc(t.status)}${custDetail0?'<br>'+custDetail0:''}"><span class="noplan">${esc(t.status||'не запланировано')}</span></div>
       </div>`;
       return;
@@ -368,7 +368,7 @@ function render(D){
     let gapBars='';
     (t.gaps||[]).forEach(g=>{
       const l=pct(g[0]),r=pct(g[1]),w=Math.max(0.6,r-l);
-      gapBars+=`<div class="vac-overlay" style="left:${l}%;width:${w}%" title="${esc(g[2])}"></div>`;
+      gapBars+=`<div class="vac-overlay" style="left:${l}%;width:${w}%"></div>`;
     });
     // (б) пауза МЕЖДУ этапами — один светло-серый блок на весь разрыв
     const stagesPresent=stageOrder.filter(s=>t.seg&&t.seg[s]);
@@ -377,7 +377,7 @@ function render(D){
       const a=cur[1], b=nxt[0]; // excl-конец текущей .. старт следующей
       if(a>=b) continue;
       const l=pct(a),r=pct(b),w=Math.max(0.5,r-l);
-      gapBars+=`<div class="gap-bar pause" style="left:${l}%;width:${w}%" title="Пауза"></div>`;
+      gapBars+=`<div class="gap-bar pause" style="left:${l}%;width:${w}%"></div>`;
     }
     // исполнители: все уникальные по стадиям в порядке анализ→разработка→тест
     let whoList=[];
@@ -387,7 +387,7 @@ function render(D){
     // заказчики в тултип
     const custDetail = (t.customers&&t.customers.length)? `<br>🏢 <b>Заказчик${t.customers.length>1?'и':''}:</b> ${esc(t.customers.join(', '))}` : '';
     rowsHtml+=`<div class="grow${t.hatch?' done-row':''}" data-customers="${esc((t.customers||[]).join('|'))}">
-      <div class="lbl"><span class="rank">${rank}</span>${codeLink(t.jira)}<div class="lbl-col"><span class="tname" title="${esc(t.name)}">${esc(t.name)}</span>${metaLine}</div></div>
+      <div class="lbl"><span class="rank">${rank}</span>${codeLink(t.jira)}<div class="lbl-col"><span class="tname">${esc(t.name)}</span>${metaLine}</div></div>
       <div class="track" data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="${dates}" data-score="${t.score}" data-seg="${esc(segDetail)+vacDetail+custDetail}">${segBars}${gapBars}</div>
     </div>`;
   });
@@ -397,7 +397,7 @@ function render(D){
     const l=pct(t.start),r=pct(t.end),w=Math.max(1.4,r-l);
     const dates=new Date(t.start).toLocaleDateString('ru-RU')+' – '+new Date(t.end).toLocaleDateString('ru-RU');
     rowsHtml+=`<div class="grow">
-      <div class="lbl"><span class="rank">✓</span>${codeLink(t.jira)}<div class="lbl-col"><span class="tname" title="${esc(t.name)}">${esc(t.name)}</span></div></div>
+      <div class="lbl"><span class="rank">✓</span>${codeLink(t.jira)}<div class="lbl-col"><span class="tname">${esc(t.name)}</span></div></div>
       <div class="track"><div class="bar done" style="left:${l}%;width:${w}%"
          data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="${dates}" data-score="${t.score||0}" data-seg="Реализовано"></div></div>
     </div>`;
