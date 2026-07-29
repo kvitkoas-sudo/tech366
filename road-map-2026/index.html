@@ -61,6 +61,13 @@
     white-space:normal;word-break:break-word}
   .track{position:relative;flex:1 1 auto;min-width:0}
   .bar{position:absolute;top:24px;height:30px;border-radius:6px;overflow:hidden}
+  /* цельная полоса задачи: контейнер со всеми этапами; контур/скругление/штриховка — на нём */
+  .taskbar{position:absolute;top:24px;height:30px;border-radius:6px;overflow:hidden;
+    border:1px solid #2e6da4;box-sizing:border-box}
+  .taskbar .seg-bar,.taskbar .gap-bar{top:0;height:100%;border:0;border-radius:0}
+  /* выполненная задача: один слой штриховки поверх всей полосы */
+  .taskbar.done::after{content:'';position:absolute;inset:0;z-index:4;pointer-events:none;
+    background:repeating-linear-gradient(45deg,rgba(90,110,140,.30),rgba(90,110,140,.30) 3px,rgba(90,110,140,0) 3px,rgba(90,110,140,0) 7px)}
   .seg-bar{position:absolute;top:24px;height:30px;border-radius:0;display:flex;align-items:center;overflow:hidden;transition:box-shadow .15s,border-color .15s}
   .gap-bar{position:absolute;top:24px;height:30px;border-radius:0;display:flex;align-items:center;justify-content:center;
     background:repeating-linear-gradient(45deg,#eef0f3,#eef0f3 5px,#e4e7ec 5px,#e4e7ec 10px);
@@ -86,14 +93,8 @@
   .highlight-kuc .seg-bar.kuc{background:#e8890c !important;border:1.5px solid #9a5a00;box-shadow:0 0 0 2px rgba(232,137,12,.35),0 1px 3px rgba(154,90,0,.4);height:22px;top:9px}
   .highlight-kuc .seg-bar.kuc .seg-cap{color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.3)}
   .highlight-kuc .grow:has(.seg-bar.kuc){background:#fff7ec}
-  .seg-bar.done{opacity:.95}
-  .seg-bar.done::after{content:'';position:absolute;inset:0;
-    background:repeating-linear-gradient(45deg,rgba(255,255,255,.75),rgba(255,255,255,.75) 3px,rgba(255,255,255,0) 3px,rgba(255,255,255,0) 7px);
-    pointer-events:none}
-  /* выполненная задача: пауза тоже штрихуется (тёмная диагональ поверх светло-серого фона) */
-  .gap-bar.pause.done::after{content:'';position:absolute;inset:0;
-    background:repeating-linear-gradient(45deg,rgba(120,130,145,.32),rgba(120,130,145,.32) 3px,rgba(120,130,145,0) 3px,rgba(120,130,145,0) 7px);
-    pointer-events:none}
+  /* внутри цельной полосы куцеповский сегмент — на всю высоту контейнера */
+  .taskbar .seg-bar.kuc{height:100% !important;top:0 !important}
   .grow.done-row .lbl{opacity:.72}
   .grow.done-row .code{background:#dfe3e9;color:#7a848f}
   .seg-cap{font-size:9.5px;font-weight:600;color:#2a3542;padding:0 5px;white-space:nowrap;text-shadow:0 1px 0 rgba(255,255,255,.35)}
@@ -345,7 +346,7 @@ function render(D){
       const cap = (w>3.2 && who)? `<span class="seg-cap">${esc(surname(who))}</span>` : '';
       // Куцепалов (аутстафф Ракета) — помечаем, подсветку включает переключатель
       const isKuc = (s==='dev' && shortWho==='Куцепалов');
-      const cls = `seg-bar${isKuc?' kuc':''}${t.hatch?' done':''}`;
+      const cls = `seg-bar${isKuc?' kuc':''}`;
       // разрыв полоски на отпуске исполнителя: рисуем стадию частями
       const cuts=(t.split||[]).filter(x=>x[0]===s);
       if(cuts.length){
@@ -368,54 +369,38 @@ function render(D){
         segBars+=`<div class="${cls}" style="left:${l}%;width:${w}%;background:${stageColor[s]};border:1px solid ${stageEdge[s]}">${cap}</div>`;
       }
     });
-    // (а) подсветка отпуска ВНУТРИ стадии — штриховка поверх
+    // (а) подсветка отпуска ВНУТРИ стадии — штриховка поверх (остаётся в .track, поверх полосы)
     let gapBars='';
     (t.gaps||[]).forEach(g=>{
       const l=pct(g[0]),r=pct(g[1]),w=Math.max(0.6,r-l);
       gapBars+=`<div class="vac-overlay" style="left:${l}%;width:${w}%"></div>`;
     });
-    // (б) пауза МЕЖДУ этапами — один светло-серый блок на весь разрыв
+    // (б) пауза МЕЖДУ этапами — один светло-серый блок на весь разрыв (внутрь цельной полосы)
+    let pauseBars='';
     const stagesPresent=stageOrder.filter(s=>t.seg&&t.seg[s]);
     for(let i=0;i<stagesPresent.length-1;i++){
       const cur=t.seg[stagesPresent[i]], nxt=t.seg[stagesPresent[i+1]];
       const a=cur[1], b=nxt[0]; // excl-конец текущей .. старт следующей
       if(a>=b) continue;
       const l=pct(a),r=pct(b),w=Math.max(0.5,r-l);
-      gapBars+=`<div class="gap-bar pause${t.hatch?' done':''}" style="left:${l}%;width:${w}%"></div>`;
+      pauseBars+=`<div class="gap-bar pause" style="left:${l}%;width:${w}%"></div>`;
     }
-    // Оформление ряда блоков (этапы + паузы), считая по геометрии left/width:
-    //  - скругляем только крайний левый (левые углы) и крайний правый (правые углы);
-    //  - убираем ВНУТРЕННИЕ вертикальные границы: у левого крайнего — правую, у правого — левую,
-    //    у средних — обе;
-    //  - ВЕСЬ ВНЕШНИЙ КОНТУР полосы красим синим (#2e6da4, цвет рамки аналитики):
-    //    верх/низ у всех блоков ряда + левый край первого + правый край последнего.
-    //  Один блок в ряду — рамка и скругление со всех сторон.
-    { const RAD=6, OUT='#2e6da4';
-      const splitDivs=s=>{ const out=[]; s.replace(/<div\b[^>]*?><\/div>|<div\b[^>]*?>.*?<\/div>/g,d=>{out.push(d);return d;}); return out; };
-      let segArr=splitDivs(segBars), gapArr=splitDivs(gapBars);
-      const all=[]; // {group:'seg'|'gap', i, L, R}
-      const coord=d=>{ const m=d.match(/left:([\d.]+)%;width:([\d.]+)%/); return m?[parseFloat(m[1]),parseFloat(m[1])+parseFloat(m[2])]:null; };
-      segArr.forEach((d,i)=>{ const c=coord(d); if(c) all.push({g:'seg',i,L:c[0],R:c[1]}); });
-      gapArr.forEach((d,i)=>{ const c=coord(d); if(c) all.push({g:'gap',i,L:c[0],R:c[1]}); });
-      if(all.length){
-        let li=0,ri=0;
-        all.forEach((b,k)=>{ if(b.L<all[li].L)li=k; if(b.R>all[ri].R)ri=k; });
-        const add=(d,css)=>d.replace(/(style=")([^"]*)"/, (m,p,st)=>`${p}${st};${css}"`);
-        const setRadius=(d,css)=>add(d,'border-radius:'+css);
-        const dropSide=(d,side)=>add(d,`border-${side}-width:0`);
-        const single=(li===ri);
-        all.forEach((b,k)=>{
-          const arr = b.g==='seg'?segArr:gapArr;
-          let d=arr[b.i];
-          // синий верх/низ у всех блоков ряда
-          d=add(d,`border-top-color:${OUT};border-bottom-color:${OUT}`);
-          if(single){ d=setRadius(d,RAD+'px'); d=add(d,`border-left-color:${OUT};border-right-color:${OUT}`); }
-          else if(k===li){ d=setRadius(d,`${RAD}px 0 0 ${RAD}px`); d=dropSide(d,'right'); d=add(d,`border-left-color:${OUT}`); }
-          else if(k===ri){ d=setRadius(d,`0 ${RAD}px ${RAD}px 0`); d=dropSide(d,'left'); d=add(d,`border-right-color:${OUT}`); }
-          else { d=dropSide(d,'left'); d=dropSide(d,'right'); }
-          arr[b.i]=d;
-        });
-        segBars=segArr.join(''); gapBars=gapArr.join('');
+    // ЦЕЛЬНАЯ ПОЛОСА: оборачиваем сегменты+паузы в контейнер .taskbar (контур/скругление/штриховка — на нём),
+    // вложенные блоки перепозиционируем ОТНОСИТЕЛЬНО контейнера.
+    let barHTML='';
+    { const splitDivs=s=>{ const out=[]; s.replace(/<div\b[^>]*?><\/div>|<div\b[^>]*?>.*?<\/div>/g,d=>{out.push(d);return d;}); return out; };
+      const divs=splitDivs(segBars).concat(splitDivs(pauseBars));
+      const co=d=>{ const m=d.match(/left:([\d.]+)%;width:([\d.]+)%/); return m?{L:parseFloat(m[1]),W:parseFloat(m[2])}:null; };
+      let barL=Infinity,barR=-Infinity;
+      divs.forEach(d=>{ const c=co(d); if(c){ if(c.L<barL)barL=c.L; if(c.L+c.W>barR)barR=c.L+c.W; } });
+      if(isFinite(barL)&&barR>barL){
+        const span=barR-barL;
+        // пересчёт left/width каждого вложенного блока в проценты ОТНОСИТЕЛЬНО контейнера
+        const inner=divs.map(d=>d.replace(/left:([\d.]+)%;width:([\d.]+)%/,(m,L,W)=>{
+          const nl=(parseFloat(L)-barL)/span*100, nw=parseFloat(W)/span*100;
+          return `left:${nl.toFixed(3)}%;width:${nw.toFixed(3)}%`;
+        })).join('');
+        barHTML=`<div class="taskbar${t.hatch?' done':''}" style="left:${barL}%;width:${span}%">${inner}</div>`;
       }
     }
     // исполнители: все уникальные по стадиям в порядке анализ→разработка→тест
@@ -427,7 +412,7 @@ function render(D){
     const custDetail = (t.customers&&t.customers.length)? `<br>🏢 <b>Заказчик${t.customers.length>1?'и':''}:</b> ${esc(t.customers.join(', '))}` : '';
     rowsHtml+=`<div class="grow${t.hatch?' done-row':''}" data-customers="${esc((t.customers||[]).join('|'))}">
       <div class="lbl"><span class="rank">${rank}</span>${codeLink(t.jira)}<div class="lbl-col"><span class="tname">${esc(t.name)}</span>${metaLine}</div></div>
-      <div class="track" data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="${dates}" data-score="${t.score}" data-seg="${esc(segDetail)+vacDetail+custDetail}">${segBars}${gapBars}</div>
+      <div class="track" data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="${dates}" data-score="${t.score}" data-seg="${esc(segDetail)+vacDetail+custDetail}">${barHTML}${gapBars}</div>
     </div>`;
   });
   // реализованные — отдельным блоком снизу
