@@ -73,7 +73,7 @@
   .gap-bar.vacpause{background:#fdeadf;border:1px solid #efc4a6}
   .gap-bar.vacpause span{color:#b5714a;font-style:normal}
   .gap-bar.wait{background:repeating-linear-gradient(45deg,#f0f2f5,#f0f2f5 5px,#e7eaef 5px,#e7eaef 10px);border:1px dashed #cfd5dd}
-  .gap-bar.pause{background:#eef0f3;border:1px solid #c9cfd8}
+  .gap-bar.pause{background:#eef0f3;border:1px solid #aeb6c2}
   /* штриховка отпуска поверх стадии, только дни пересечения */
   .vac-overlay{position:absolute;top:24px;height:30px;border-radius:2px;pointer-events:auto;z-index:3;
     background:repeating-linear-gradient(45deg,rgba(229,120,60,.55),rgba(229,120,60,.55) 3px,rgba(255,255,255,.15) 3px,rgba(255,255,255,.15) 6px);
@@ -379,24 +379,34 @@ function render(D){
       const l=pct(a),r=pct(b),w=Math.max(0.5,r-l);
       gapBars+=`<div class="gap-bar pause" style="left:${l}%;width:${w}%"></div>`;
     }
-    // скругление: только крайний левый и крайний правый блок ряда (этапы + паузы),
-    // считая по геометрии (left/width), т.к. в DOM блоки идут не по порядку слева-направо.
+    // Оформление ряда блоков (этапы + паузы), считая по геометрии left/width:
+    //  - скругляем только крайний левый (левые углы) и крайний правый (правые углы);
+    //  - убираем ВНУТРЕННИЕ вертикальные границы: у левого крайнего — правую, у правого — левую,
+    //    у средних — обе; верх/низ не трогаем. Один блок в ряду — рамка и скругление со всех сторон.
     { const RAD=6;
-      const barsHtml=segBars+gapBars;                       // vac-overlay сюда НЕ входит (это штриховка поверх стадии)
-      const blocks=[]; const re=/left:([\d.]+)%;width:([\d.]+)%/g; let m;
-      while((m=re.exec(barsHtml))){ blocks.push({L:parseFloat(m[1]),R:parseFloat(m[1])+parseFloat(m[2]),raw:m[0]}); }
-      if(blocks.length){
+      // разбиваем на отдельные div-блоки, сохраняя исходный порядок внутри каждой группы
+      const splitDivs=s=>{ const out=[]; s.replace(/<div\b[^>]*?><\/div>|<div\b[^>]*?>.*?<\/div>/g,d=>{out.push(d);return d;}); return out; };
+      let segArr=splitDivs(segBars), gapArr=splitDivs(gapBars);
+      const all=[]; // {group:'seg'|'gap', i, L, R}
+      const coord=d=>{ const m=d.match(/left:([\d.]+)%;width:([\d.]+)%/); return m?[parseFloat(m[1]),parseFloat(m[1])+parseFloat(m[2])]:null; };
+      segArr.forEach((d,i)=>{ const c=coord(d); if(c) all.push({g:'seg',i,L:c[0],R:c[1]}); });
+      gapArr.forEach((d,i)=>{ const c=coord(d); if(c) all.push({g:'gap',i,L:c[0],R:c[1]}); });
+      if(all.length){
         let li=0,ri=0;
-        blocks.forEach((b,i)=>{ if(b.L<blocks[li].L)li=i; if(b.R>blocks[ri].R)ri=i; });
-        const style=(raw,css)=>raw+';border-radius:'+css;
-        const applyOne=(html,raw,css)=>html.replace(raw, style(raw,css));
-        // навешиваем радиусы; если крайний левый и правый — один и тот же блок, скругляем все 4 угла
-        if(li===ri){ segBars=applyOne(segBars,blocks[li].raw,RAD+'px'); gapBars=applyOne(gapBars,blocks[li].raw,RAD+'px'); }
-        else{
-          const leftCss=`${RAD}px 0 0 ${RAD}px`, rightCss=`0 ${RAD}px ${RAD}px 0`;
-          segBars=applyOne(segBars,blocks[li].raw,leftCss);  gapBars=applyOne(gapBars,blocks[li].raw,leftCss);
-          segBars=applyOne(segBars,blocks[ri].raw,rightCss); gapBars=applyOne(gapBars,blocks[ri].raw,rightCss);
-        }
+        all.forEach((b,k)=>{ if(b.L<all[li].L)li=k; if(b.R>all[ri].R)ri=k; });
+        const setRadius=(d,css)=>d.replace(/(style=")([^"]*)"/, (m,p,st)=>`${p}${st};border-radius:${css}"`);
+        const dropSide=(d,side)=>d.replace(/(style=")([^"]*)"/, (m,p,st)=>`${p}${st};border-${side}-width:0"`);
+        const single=(li===ri);
+        all.forEach((b,k)=>{
+          const arr = b.g==='seg'?segArr:gapArr;
+          let d=arr[b.i];
+          if(single){ if(k===li) d=setRadius(d,RAD+'px'); }
+          else if(k===li){ d=setRadius(d,`${RAD}px 0 0 ${RAD}px`); d=dropSide(d,'right'); }
+          else if(k===ri){ d=setRadius(d,`0 ${RAD}px ${RAD}px 0`); d=dropSide(d,'left'); }
+          else { d=dropSide(d,'left'); d=dropSide(d,'right'); }
+          arr[b.i]=d;
+        });
+        segBars=segArr.join(''); gapBars=gapArr.join('');
       }
     }
     // исполнители: все уникальные по стадиям в порядке анализ→разработка→тест
