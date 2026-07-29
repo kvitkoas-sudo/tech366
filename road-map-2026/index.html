@@ -382,9 +382,11 @@ function render(D){
     // Оформление ряда блоков (этапы + паузы), считая по геометрии left/width:
     //  - скругляем только крайний левый (левые углы) и крайний правый (правые углы);
     //  - убираем ВНУТРЕННИЕ вертикальные границы: у левого крайнего — правую, у правого — левую,
-    //    у средних — обе; верх/низ не трогаем. Один блок в ряду — рамка и скругление со всех сторон.
-    { const RAD=6;
-      // разбиваем на отдельные div-блоки, сохраняя исходный порядок внутри каждой группы
+    //    у средних — обе;
+    //  - ВЕСЬ ВНЕШНИЙ КОНТУР полосы красим синим (#2e6da4, цвет рамки аналитики):
+    //    верх/низ у всех блоков ряда + левый край первого + правый край последнего.
+    //  Один блок в ряду — рамка и скругление со всех сторон.
+    { const RAD=6, OUT='#2e6da4';
       const splitDivs=s=>{ const out=[]; s.replace(/<div\b[^>]*?><\/div>|<div\b[^>]*?>.*?<\/div>/g,d=>{out.push(d);return d;}); return out; };
       let segArr=splitDivs(segBars), gapArr=splitDivs(gapBars);
       const all=[]; // {group:'seg'|'gap', i, L, R}
@@ -394,15 +396,18 @@ function render(D){
       if(all.length){
         let li=0,ri=0;
         all.forEach((b,k)=>{ if(b.L<all[li].L)li=k; if(b.R>all[ri].R)ri=k; });
-        const setRadius=(d,css)=>d.replace(/(style=")([^"]*)"/, (m,p,st)=>`${p}${st};border-radius:${css}"`);
-        const dropSide=(d,side)=>d.replace(/(style=")([^"]*)"/, (m,p,st)=>`${p}${st};border-${side}-width:0"`);
+        const add=(d,css)=>d.replace(/(style=")([^"]*)"/, (m,p,st)=>`${p}${st};${css}"`);
+        const setRadius=(d,css)=>add(d,'border-radius:'+css);
+        const dropSide=(d,side)=>add(d,`border-${side}-width:0`);
         const single=(li===ri);
         all.forEach((b,k)=>{
           const arr = b.g==='seg'?segArr:gapArr;
           let d=arr[b.i];
-          if(single){ if(k===li) d=setRadius(d,RAD+'px'); }
-          else if(k===li){ d=setRadius(d,`${RAD}px 0 0 ${RAD}px`); d=dropSide(d,'right'); }
-          else if(k===ri){ d=setRadius(d,`0 ${RAD}px ${RAD}px 0`); d=dropSide(d,'left'); }
+          // синий верх/низ у всех блоков ряда
+          d=add(d,`border-top-color:${OUT};border-bottom-color:${OUT}`);
+          if(single){ d=setRadius(d,RAD+'px'); d=add(d,`border-left-color:${OUT};border-right-color:${OUT}`); }
+          else if(k===li){ d=setRadius(d,`${RAD}px 0 0 ${RAD}px`); d=dropSide(d,'right'); d=add(d,`border-left-color:${OUT}`); }
+          else if(k===ri){ d=setRadius(d,`0 ${RAD}px ${RAD}px 0`); d=dropSide(d,'left'); d=add(d,`border-right-color:${OUT}`); }
           else { d=dropSide(d,'left'); d=dropSide(d,'right'); }
           arr[b.i]=d;
         });
