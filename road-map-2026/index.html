@@ -64,7 +64,8 @@
   /* цельная полоса задачи: контейнер со всеми этапами; контур/скругление/штриховка — на нём */
   .taskbar{position:absolute;top:24px;height:30px;border-radius:6px;overflow:hidden;
     border:1px solid #2e6da4;box-sizing:border-box}
-  .taskbar .seg-bar,.taskbar .gap-bar{top:0;height:100%;border:0;border-radius:0}
+  .taskbar .seg-bar,.taskbar .gap-bar{top:0;height:100%;border:0 !important;border-radius:0;box-shadow:none !important}
+  .taskbar .seg-bar.kuc{border:0 !important;box-shadow:none !important}
   /* выполненная задача: один слой штриховки поверх всей полосы */
   .taskbar.done::after{content:'';position:absolute;inset:0;z-index:4;pointer-events:none;
     background:repeating-linear-gradient(45deg,rgba(90,110,140,.30),rgba(90,110,140,.30) 3px,rgba(90,110,140,0) 3px,rgba(90,110,140,0) 7px)}
