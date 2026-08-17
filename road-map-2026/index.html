@@ -58,6 +58,13 @@
   .rank{flex:0 0 20px;text-align:center;font-size:10px;font-weight:700;color:#98a2b0;line-height:1.4}
   .code{flex:0 0 auto;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;font-weight:700;color:#3a4757;background:#eef1f5;padding:1px 6px;border-radius:5px;white-space:nowrap;text-decoration:none;transition:background .12s,color .12s;margin-top:1px}
   a.code:hover{background:#d7e3f2;color:#1b4f8f;text-decoration:underline}
+  .code{cursor:pointer}
+  .code:hover{background:#d7e3f2;color:#1b4f8f}
+  .tname{cursor:pointer}
+  .tmeta{cursor:pointer}
+  .tname:hover{color:#1b4f8f}
+  .toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#2a3542;color:#fff;font-size:13px;padding:9px 16px;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.25);z-index:200;opacity:0;transition:opacity .2s;pointer-events:none}
+  .toast.show{opacity:1}
   .tname{flex:1 1 auto;min-width:0;font-size:11.5px;line-height:1.2;color:#2a3542;
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
     white-space:normal;word-break:break-word}
@@ -188,6 +195,7 @@
 
 </div>
 <div class="tip" id="tip"></div>
+<div class="toast" id="toast"></div>
 
 <div class="modal-bg" id="editModal">
   <div class="modal">
@@ -383,7 +391,7 @@ function render(D){
   // порядок строк уже задан в loadData (датированные по старту, затем без дат по баллам)
   // ссылка на задачу в Jira
   const JIRA='https://jira.366.ru/browse/';
-  const codeLink = j => `<a class="code" href="${JIRA}${encodeURIComponent(j)}" target="_blank" rel="noopener" title="Открыть ${esc(j)} в Jira">${esc(j)}</a>`;
+  const codeLink = j => `<span class="code" data-jira="${esc(j)}" title="Скопировать ссылку на ${esc(j)}">${esc(j)}</span>`;
   // строки
   const stageOrder=['analysis','dev','test'];
   let rowsHtml='<div class="rows">';
@@ -719,13 +727,40 @@ function saveCsv(){
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 
-// делегирование клика по полоске задачи (переживает перерисовку)
-document.addEventListener('click',function(ev){
-  const track=ev.target.closest && ev.target.closest('.track[data-code]');
-  if(!track) return;
-  const code=track.dataset.code;
+// делегирование кликов: полоса/название/даты -> редактор; код -> копировать ссылку
+const JIRA_BASE='https://jira.366.ru/browse/';
+function showToast(msg){
+  const t=document.getElementById('toast'); if(!t) return;
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(showToast._t); showToast._t=setTimeout(()=>t.classList.remove('show'),1600);
+}
+function openEditorByCode(code){
   const raw=(window.__RAW||[]).find(t=>t.jira===code);
   if(raw) openEditor(raw);
+}
+document.addEventListener('click',function(ev){
+  const tgt=ev.target;
+  // код -> копировать ссылку в буфер (не открывает редактор)
+  const codeEl=tgt.closest && tgt.closest('.code[data-jira]');
+  if(codeEl){
+    const url=JIRA_BASE+encodeURIComponent(codeEl.dataset.jira);
+    const done=()=>showToast('Ссылка скопирована: '+codeEl.dataset.jira);
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(done).catch(()=>{ prompt('Скопируйте ссылку:',url); });
+    } else { prompt('Скопируйте ссылку:',url); }
+    ev.stopPropagation();
+    return;
+  }
+  // название или даты -> открыть редактор (jira берём с .grow)
+  const lblHit=tgt.closest && tgt.closest('.tname, .tmeta');
+  if(lblHit){
+    const grow=lblHit.closest('.grow'); const code=grow&&grow.dataset.jira;
+    if(code) openEditorByCode(code);
+    return;
+  }
+  // полоса задачи -> открыть редактор
+  const track=tgt.closest && tgt.closest('.track[data-code]');
+  if(track) openEditorByCode(track.dataset.code);
 });
 document.getElementById('emCancel').addEventListener('click',closeEditor);
 document.getElementById('emApply').addEventListener('click',applyEditor);
