@@ -446,6 +446,19 @@ function render(D){
   }
   rowsEl.appendChild(ov);
 
+  // P1.3 — автопрокрутка к «Сегодня» при загрузке: линия у левого края с отступом
+  if(_todayPct>=0 && _todayPct<=100){
+    const chartEl=document.querySelector('.chart');
+    if(chartEl){
+      const timelineW=inner.scrollWidth-GUTTER;           // ширина области дат (без левой панели)
+      const todayX=GUTTER+timelineW*_todayPct/100;         // пиксельная позиция линии в inner
+      const INDENT=48;                                     // отступ линии от начала видимой области дат
+      let target=todayX-GUTTER-INDENT;                     // чтобы линия встала сразу после gutter + отступ
+      target=Math.max(0, Math.min(target, chartEl.scrollWidth-chartEl.clientWidth));
+      chartEl.scrollLeft=target;
+    }
+  }
+
   // тултип
   const tip=document.getElementById('tip');
   document.querySelectorAll('.track[data-code], .bar.done').forEach(b=>{
