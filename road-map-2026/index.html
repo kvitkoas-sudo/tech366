@@ -116,6 +116,26 @@
   .tip b{color:#b06d00}
   .tip .seg{color:#5f7488}
   @media print{body,.page{background:#fff}.chart{overflow:visible}.inner{min-width:0}}
+  /* P4 — модальный редактор задачи */
+  .edit-btn{font-size:12px;padding:4px 12px;border:1px solid #2e6da4;border-radius:6px;background:#2e6da4;color:#fff;cursor:pointer;font-weight:600}
+  .edit-btn:hover{background:#255c8a}
+  .modal-bg{position:fixed;inset:0;background:rgba(20,30,50,.45);z-index:100;display:none;align-items:center;justify-content:center}
+  .modal-bg.open{display:flex}
+  .modal{background:#fff;border-radius:12px;box-shadow:0 20px 60px rgba(20,30,50,.35);width:560px;max-width:94vw;max-height:90vh;overflow:auto;padding:20px 22px}
+  .modal h3{margin:0 0 2px;font-size:17px}
+  .modal .jk{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#6b7686;margin-bottom:14px}
+  .modal .fld{margin-bottom:11px}
+  .modal .fld>label{display:block;font-size:11px;font-weight:600;color:#5a6673;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+  .modal input,.modal select{font-size:13px;padding:5px 8px;border:1px solid #c3c9d2;border-radius:6px;background:#fff;color:#2a3542;width:100%;box-sizing:border-box}
+  .modal .stage-row{display:grid;grid-template-columns:90px 1fr 1fr 1fr;gap:8px;align-items:center;margin-bottom:7px}
+  .modal .stage-row .sh{font-size:12px;font-weight:600;color:#3a4757}
+  .modal .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .modal .acts{display:flex;justify-content:space-between;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid #e4e8ee}
+  .modal .btn{font-size:13px;padding:7px 16px;border-radius:7px;cursor:pointer;font-weight:600;border:1px solid transparent}
+  .btn.apply{background:#2e6da4;color:#fff;border-color:#2e6da4}
+  .btn.apply:hover{background:#255c8a}
+  .btn.cancel{background:#eef1f5;color:#3a4757;border-color:#d5dbe3}
+  .btn.cancel:hover{background:#e2e7ee}
 </style>
 </head>
 <body>
@@ -163,6 +183,7 @@
       <span class="switch"><span class="knob"></span></span>
       <span>Скрыть реализованные</span>
     </label>
+    <button id="saveCsvBtn" class="edit-btn" style="margin-left:auto">💾 Сохранить в CSV</button>
   </div>
 
   <div class="chartwrap"><div class="chart"><div class="inner" id="inner"></div></div></div>
@@ -175,6 +196,45 @@
   </div>
 </div>
 <div class="tip" id="tip"></div>
+
+<div class="modal-bg" id="editModal">
+  <div class="modal">
+    <h3 id="emName">—</h3>
+    <div class="jk" id="emJira">—</div>
+    <div class="grid2">
+      <div class="fld"><label>Статус</label>
+        <select id="emStatus">
+          <option value="В очереди">В очереди</option>
+          <option value="Анализ">Анализ</option>
+          <option value="Разработка">Разработка</option>
+          <option value="Реализовано">Реализовано</option>
+        </select>
+      </div>
+      <div class="fld"><label>Заказчики (через запятую)</label>
+        <input type="text" id="emCustomers" placeholder="Михалёва, Козырева">
+      </div>
+    </div>
+    <div class="fld"><label>Трудоёмкость, ч (анализ / разработка / тест)</label>
+      <div class="grid2" style="grid-template-columns:1fr 1fr 1fr">
+        <input type="number" id="emHa" min="0" placeholder="анализ">
+        <input type="number" id="emHd" min="0" placeholder="разработка">
+        <input type="number" id="emHt" min="0" placeholder="тест">
+      </div>
+    </div>
+    <div class="fld"><label>Этапы: исполнитель · начало · конец</label>
+      <div class="stage-row"><span class="sh">Анализ</span>
+        <select id="emAw"></select><input type="date" id="emAs"><input type="date" id="emAe"></div>
+      <div class="stage-row"><span class="sh">Разработка</span>
+        <select id="emDw"></select><input type="date" id="emDs"><input type="date" id="emDe"></div>
+      <div class="stage-row"><span class="sh">Тест</span>
+        <select id="emTw"></select><input type="date" id="emTs"><input type="date" id="emTe"></div>
+    </div>
+    <div class="acts">
+      <button class="btn cancel" id="emCancel">Отмена</button>
+      <button class="btn apply" id="emApply">Применить</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const BASE='https://raw.githubusercontent.com/kvitkoas-sudo/tech366/main/road-map-2026/';
@@ -222,14 +282,24 @@ async function loadData(){
         return r.text();
       })));
   const tasks=parseCSV(tRaw), res=parseCSV(rRaw);
+  // сохраняем сырые данные и порядок колонок для редактора/выгрузки CSV
+  window.__COLS = (function(){
+    const m=tRaw.replace(/^\uFEFF/,'').split(/\r?\n/)[0]; return m.split(';').map(s=>s.trim());
+  })();
+  window.__RAW = tasks;      // массив объектов-строк (ссылки живут, правим их)
+  window.__RES = res;
 
+  return buildD(tasks,res);
+}
+
+// Сборка структуры D из сырых строк задач и ресурсов (переиспользуется после редактирования)
+function buildD(tasks,res){
   const shortOf={}, vac={};
   res.forEach(r=>{
     shortOf[r.fio]=r.short||String(r.fio).split(' ')[0];
     if(r.vacation_start&&r.vacation_end) vac[r.fio]=[toISO(r.vacation_start),toISO(r.vacation_end)];
   });
 
-  // пересечение [s..e] стадии с отпуском исполнителя -> массив [гс,ге(excl)] отрезков
   function vacOverlap(who,s,e){
     const v=vac[who]; if(!v) return null;
     const a=s>v[0]?s:v[0], b=e<v[1]?e:v[1];
@@ -243,7 +313,6 @@ async function loadData(){
       const s=toISO(t[k+'_start']), e=toISO(t[k+'_end']), w=t[k+'_who'];
       if(s&&e){ seg[k]=[s,excl(e),w,shortOf[w]||String(w).split(' ')[0],e]; hasDates=true; }
     });
-    // подсветка отпусков: отрезки внутри стадий, где исполнитель в отпуске
     const gaps=[];
     Object.keys(seg).forEach(k=>{
       const ov=vacOverlap(seg[k][2],seg[k][0],seg[k][4]);
@@ -253,7 +322,8 @@ async function loadData(){
       seg:seg,hasDates:hasDates,
       fixed:t.fixed==='1',hatch:t.hatch==='1',
       who:[...new Set([t.analysis_who,t.dev_who,t.test_who].map(x=>(x||'').trim()).filter(Boolean))],
-      customers:(t.customers||'').split(',').map(s=>s.trim()).filter(Boolean)};
+      customers:(t.customers||'').split(',').map(s=>s.trim()).filter(Boolean),
+      _raw:t};
     if(hasDates){
       const alls=Object.values(seg).flatMap(v=>[v[0],v[4]]);
       o.start=alls.reduce((a,b)=>a<b?a:b);
@@ -264,7 +334,6 @@ async function loadData(){
     return o;
   });
 
-  // сортировка: сначала с датами (по старту), потом без дат (по баллам)
   const doneT=plan.filter(t=>t.hasDates && t.hatch).sort((a,b)=> a.start.localeCompare(b.start));
   const activeT=plan.filter(t=>t.hasDates && !t.hatch).sort((a,b)=> a.start.localeCompare(b.start));
   const undated=plan.filter(t=>!t.hasDates).sort((a,b)=> b.score-a.score);
@@ -553,6 +622,102 @@ function render(D){
   if(hideDone) hideDone.addEventListener('change',applyFilters);
 
 }
+
+// ===== P4: визуальный редактор задачи =====
+function isoToInput(s){ // ДД.ММ.ГГГГ или ISO -> ГГГГ-ММ-ДД для <input type=date>
+  s=(s||'').trim(); if(!s) return '';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m=s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  return m? m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0') : '';
+}
+function inputToRu(s){ // ГГГГ-ММ-ДД -> ДД.ММ.ГГГГ для CSV
+  s=(s||'').trim(); if(!s) return '';
+  const m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m? m[3]+'.'+m[2]+'.'+m[1] : s;
+}
+let __editingRaw=null;   // ссылка на редактируемую строку из window.__RAW
+
+function fillWhoSelect(sel, current){
+  sel.innerHTML='';
+  const opts=new Set(['']);
+  (window.__RAW||[]).forEach(t=>{ ['analysis_who','dev_who','test_who'].forEach(k=>{ const v=(t[k]||'').trim(); if(v) opts.add(v); }); });
+  if(current) opts.add(current);
+  [...opts].sort((a,b)=>a.localeCompare(b,'ru')).forEach(v=>{
+    const o=document.createElement('option'); o.value=v; o.textContent=v||'—'; if(v===(current||'')) o.selected=true; sel.appendChild(o);
+  });
+}
+
+function openEditor(raw){
+  __editingRaw=raw;
+  document.getElementById('emName').textContent=raw.name||'';
+  document.getElementById('emJira').textContent=raw.jira||'';
+  const st=document.getElementById('emStatus'); st.value=raw.status||'В очереди';
+  document.getElementById('emCustomers').value=raw.customers||'';
+  document.getElementById('emHa').value=raw.hours_analysis||'';
+  document.getElementById('emHd').value=raw.hours_dev||'';
+  document.getElementById('emHt').value=raw.hours_test||'';
+  fillWhoSelect(document.getElementById('emAw'), (raw.analysis_who||'').trim());
+  fillWhoSelect(document.getElementById('emDw'), (raw.dev_who||'').trim());
+  fillWhoSelect(document.getElementById('emTw'), (raw.test_who||'').trim());
+  document.getElementById('emAs').value=isoToInput(raw.analysis_start);
+  document.getElementById('emAe').value=isoToInput(raw.analysis_end);
+  document.getElementById('emDs').value=isoToInput(raw.dev_start);
+  document.getElementById('emDe').value=isoToInput(raw.dev_end);
+  document.getElementById('emTs').value=isoToInput(raw.test_start);
+  document.getElementById('emTe').value=isoToInput(raw.test_end);
+  document.getElementById('editModal').classList.add('open');
+}
+function closeEditor(){ document.getElementById('editModal').classList.remove('open'); __editingRaw=null; }
+
+function applyEditor(){
+  const r=__editingRaw; if(!r) return;
+  r.status=document.getElementById('emStatus').value;
+  r.customers=document.getElementById('emCustomers').value.trim();
+  r.hours_analysis=document.getElementById('emHa').value.trim();
+  r.hours_dev=document.getElementById('emHd').value.trim();
+  r.hours_test=document.getElementById('emHt').value.trim();
+  r.analysis_who=document.getElementById('emAw').value;
+  r.dev_who=document.getElementById('emDw').value;
+  r.test_who=document.getElementById('emTw').value;
+  r.analysis_start=inputToRu(document.getElementById('emAs').value);
+  r.analysis_end  =inputToRu(document.getElementById('emAe').value);
+  r.dev_start     =inputToRu(document.getElementById('emDs').value);
+  r.dev_end       =inputToRu(document.getElementById('emDe').value);
+  r.test_start    =inputToRu(document.getElementById('emTs').value);
+  r.test_end      =inputToRu(document.getElementById('emTe').value);
+  // авто-hatch: статус «Реализовано» -> 1, иначе 0
+  r.hatch = (r.status==='Реализовано') ? '1' : '0';
+  closeEditor();
+  // пересобрать и перерисовать карту
+  const D=buildD(window.__RAW, window.__RES);
+  render(D);
+}
+
+function csvEscape(v){ v=(v==null?'':String(v)); return /[;"\n\r]/.test(v)? '"'+v.replace(/"/g,'""')+'"' : v; }
+function saveCsv(){
+  const cols=window.__COLS||[]; const rows=window.__RAW||[];
+  const lines=[cols.join(';')];
+  rows.forEach(r=>lines.push(cols.map(c=>csvEscape(r[c])).join(';')));
+  const text='\uFEFF'+lines.join('\r\n')+'\r\n';   // BOM + CRLF
+  const blob=new Blob([text],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='tasks.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+// делегирование клика по полоске задачи (переживает перерисовку)
+document.addEventListener('click',function(ev){
+  const track=ev.target.closest && ev.target.closest('.track[data-code]');
+  if(!track) return;
+  const code=track.dataset.code;
+  const raw=(window.__RAW||[]).find(t=>t.jira===code);
+  if(raw) openEditor(raw);
+});
+document.getElementById('emCancel').addEventListener('click',closeEditor);
+document.getElementById('emApply').addEventListener('click',applyEditor);
+document.getElementById('editModal').addEventListener('click',function(ev){ if(ev.target===this) closeEditor(); });
+document.getElementById('saveCsvBtn').addEventListener('click',saveCsv);
 
 loadData().then(function(D){
   render(D);
