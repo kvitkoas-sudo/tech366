@@ -126,7 +126,7 @@
   <div class="cards">
     <div class="card"><div class="n">2 + 2</div><div class="l">аналитика · разработчика</div></div>
     <div class="card"><div class="n">12,8 / 10,4</div><div class="l">ч/день: анализ+тест / разраб</div></div>
-    <div class="card"><div class="n">30</div><div class="l">задач в этом плане</div></div>
+    <div class="card"><div class="n" id="cardTaskCount">—</div><div class="l" id="cardTaskLabel">задач в этом плане</div></div>
     <div class="card warn"><div class="n">окт 2026</div><div class="l">горизонт топ-30</div></div>
     <div class="card warn"><div class="n">май 2027</div><div class="l">весь пул (84 задачи)</div></div>
   </div>
@@ -460,6 +460,17 @@ function render(D){
     tl.innerHTML='<div class="flag">Сегодня</div>';ov.appendChild(tl);
   }
   rowsEl.appendChild(ov);
+
+  // P3.1 — динамический счётчик задач
+  const _cnt=document.getElementById('cardTaskCount');
+  const _lbl2=document.getElementById('cardTaskLabel');
+  if(_cnt){
+    const total=D.plan.length;
+    const withDates=D.plan.filter(t=>t.hasDates).length;
+    const doneN=D.plan.filter(t=>t.hatch).length;
+    _cnt.textContent=total;
+    if(_lbl2) _lbl2.innerHTML=`задач в плане · ${withDates} с датами · ${doneN} готово`;
+  }
 
   // P1.3 — автопрокрутка к «Сегодня» при загрузке: линия у левого края с отступом
   if(_todayPct>=0 && _todayPct<=100){
