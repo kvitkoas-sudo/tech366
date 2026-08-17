@@ -14,7 +14,8 @@
   }
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif}
-  .page{max-width:1600px;margin:0 auto;padding:26px 22px 60px}
+  body{height:100vh;overflow:hidden}
+  .page{max-width:1600px;margin:0 auto;padding:26px 22px 0;height:100vh;display:flex;flex-direction:column;min-height:0}
   h1{font-size:24px;margin:0;letter-spacing:-.3px}
   .sub{color:var(--muted);font-size:13px;margin:3px 0 0;max-width:1050px}
   .cards{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0 6px}
@@ -29,12 +30,13 @@
   .sw.done{background:var(--c-done)}
   .todaymark{width:2px;height:15px;background:var(--today);display:inline-block;border-radius:2px}
 
-  .chartwrap{background:var(--panel);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
-  .chart{overflow-x:auto}
+  .chartwrap{background:var(--panel);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+  .chart{overflow:auto;flex:1 1 auto;min-height:0}
   .inner{position:relative;min-width:1400px;--gutter:396px}
 
-  .qrow{display:flex;height:26px;border-bottom:1px solid var(--grid);background:var(--panel)}
-  .morow{display:flex;height:28px;border-bottom:1px solid var(--grid);background:var(--panel)}
+  .qrow{display:flex;height:26px;border-bottom:1px solid var(--grid);background:var(--panel);position:sticky;top:0;z-index:12}
+  .morow{display:flex;height:28px;border-bottom:1px solid var(--grid);background:var(--panel);position:sticky;top:26px;z-index:12}
+  .qrow .gutcell,.morow .gutcell{z-index:14}
   .gutcell{flex:0 0 var(--gutter,330px);width:var(--gutter,330px);max-width:var(--gutter,330px);box-sizing:border-box;background:var(--panel);position:sticky;left:0;z-index:9;border-right:1px solid var(--grid);
     display:flex;align-items:center;padding:0 14px;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;overflow:hidden}
   .qtl,.motl{position:relative;flex:1}
@@ -109,7 +111,7 @@
   .today{position:absolute;top:0;bottom:0;width:2px;background:var(--today);z-index:5;pointer-events:none}
   .today .flag{position:absolute;top:-1px;left:0;transform:translateX(-42%);background:var(--today);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;white-space:nowrap}
   .qgrid{position:absolute;top:0;bottom:0;width:2px;background:var(--qline);opacity:.5;z-index:0;pointer-events:none}
-  .foot{margin-top:14px;font-size:11.5px;color:var(--muted);line-height:1.55}
+  .foot{margin:10px 0 12px;font-size:11px;color:var(--muted);line-height:1.5;flex:0 0 auto;max-height:20vh;overflow:auto}
   .tip{position:fixed;z-index:50;background:#f4f8fc;color:#2a3542;font-size:12px;padding:9px 12px;border-radius:8px;max-width:340px;border:1px solid #c9d9e8;box-shadow:0 8px 24px rgba(46,109,164,.18);pointer-events:none;opacity:0;transition:opacity .12s;line-height:1.45}
   .tip b{color:#b06d00}
   .tip .seg{color:#5f7488}
