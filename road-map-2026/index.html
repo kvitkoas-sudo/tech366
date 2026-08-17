@@ -141,14 +141,11 @@
 <body>
 <div class="page">
   <h1>Дорожная карта и ресурсный план команды «Товародвижение розница»</h1>
-  <p class="sub">Проекты: <b>Претензионная работа</b> и <b>Приёмка товара</b>. Задачи отобраны по сумме баллов заказчиков, включая реализованные. Симуляция с учётом реальной загрузки команды и приоритета (баллов). Этапы: <b style="color:#7a828e">анализ</b> · <b style="color:#d99a1c">разработка</b> · <b style="color:#2e8b46">тест</b>. Учтён производственный календарь РФ (5/2 + праздники) и отпуска. Разработка: Куцепалов (аутстафф «Ракета», 8ч, с 20.07, отпуск 12–31.08) + Шуешкин (младший, 3ч). Аналитики: Чернышев (8ч, отпуск 14–27.09), Квитко (5ч, отпуск 3–16.08).</p>
 
   <div class="cards">
-    <div class="card"><div class="n">2 + 2</div><div class="l">аналитика · разработчика</div></div>
-    <div class="card"><div class="n">12,8 / 10,4</div><div class="l">ч/день: анализ+тест / разраб</div></div>
+    <div class="card"><div class="n" id="cardTeam">—</div><div class="l">аналитика · разработчика</div></div>
     <div class="card"><div class="n" id="cardTaskCount">—</div><div class="l" id="cardTaskLabel">задач в этом плане</div></div>
-    <div class="card warn"><div class="n">окт 2026</div><div class="l">горизонт топ-30</div></div>
-    <div class="card warn"><div class="n">май 2027</div><div class="l">весь пул (84 задачи)</div></div>
+    <div class="card warn"><div class="n" id="cardHorizon">—</div><div class="l">горизонт плана</div></div>
   </div>
 
   <div class="legend">
@@ -179,7 +176,7 @@
       </select>
     </label>
     <label class="it toggle" style="margin-left:8px;cursor:pointer;user-select:none">
-      <input type="checkbox" id="hideDone" style="display:none">
+      <input type="checkbox" id="hideDone" checked style="display:none">
       <span class="switch"><span class="knob"></span></span>
       <span>Скрыть реализованные</span>
     </label>
@@ -188,12 +185,6 @@
 
   <div class="chartwrap"><div class="chart"><div class="inner" id="inner"></div></div></div>
 
-  <div class="foot">
-    * <b>Ресурсная модель:</b> Куцепалов — аутстафф «Ракета» (8ч/день, доступен с 20.07, отпуск 12–31.08); Шуешкин — младший (3ч/день). Аналитики Чернышев (8ч, отпуск 14–27.09) и Квитко (5ч, отпуск 3–16.08) ведут анализ+тест своей задачи, тест в приоритете. Учтён календарь РФ (5/2 + госпраздники). Отпуск исполнителя = пауза задачи. Трудоёмкость в часах.<br>
-    * Порядок запуска задач — строго по приоритету (сумма баллов заказчиков). Стадии внутри задачи идут последовательно: анализ → разработка → тест.<br>
-    * <span id="srcNote" style="color:#8a94a6">Загрузка данных…</span><br>
-    * <b>Узкое место:</b> основной ограничитель — разработка (Шуешкин лишь на 30%). Тест-приоритет аналитиков иногда сдвигает старт анализа новых задач. Даты — прогноз загрузки при идеальном следовании приоритету, не обязательства.
-  </div>
 </div>
 <div class="tip" id="tip"></div>
 
@@ -541,6 +532,25 @@ function render(D){
     if(_lbl2) _lbl2.innerHTML=`задач в плане · ${withDates} с датами · ${doneN} готово`;
   }
 
+  // P3.2 — команда (аналитики/разработчики) и горизонт из данных tasks.csv
+  const _team=document.getElementById('cardTeam');
+  if(_team){
+    const an=new Set(), dv=new Set();
+    (window.__RAW||[]).forEach(t=>{
+      [t.analysis_who,t.test_who].forEach(w=>{ if((w||'').trim()) an.add(w.trim()); });
+      if((t.dev_who||'').trim()) dv.add(t.dev_who.trim());
+    });
+    _team.textContent = an.size+' + '+dv.size;
+  }
+  const _hor=document.getElementById('cardHorizon');
+  if(_hor){
+    const MON=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+    let mx=null;
+    D.plan.forEach(t=>{ if(t.hasDates && t.disp_end){ if(!mx || t.disp_end>mx) mx=t.disp_end; } });
+    if(mx){ const d=new Date(mx); _hor.textContent=MON[d.getMonth()]+' '+d.getFullYear(); }
+    else _hor.textContent='—';
+  }
+
   // P1.3 — автопрокрутка к «Сегодня» при загрузке: линия у левого края с отступом
   if(_todayPct>=0 && _todayPct<=100){
     const chartEl=document.querySelector('.chart');
@@ -554,15 +564,16 @@ function render(D){
     }
   }
 
-  // тултип
+  // тултип — только при наведении на саму полосу задачи (.taskbar)
   const tip=document.getElementById('tip');
-  document.querySelectorAll('.track[data-code], .bar.done').forEach(b=>{
-    b.addEventListener('mousemove',ev=>{
+  document.querySelectorAll('.taskbar').forEach(bar=>{
+    const b=bar.closest('.track[data-code]'); if(!b) return;
+    bar.addEventListener('mousemove',ev=>{
       tip.innerHTML=`<b>${b.dataset.code}</b> · приоритет ${b.dataset.score} б.<br>${b.dataset.name}<br>📅 ${b.dataset.dates}<br><span class="seg">${b.dataset.seg}</span>`;
       tip.style.opacity=1;let x=ev.clientX+14,y=ev.clientY+14;
       if(x+350>window.innerWidth)x=ev.clientX-350;tip.style.left=x+'px';tip.style.top=y+'px';
     });
-    b.addEventListener('mouseleave',()=>tip.style.opacity=0);
+    bar.addEventListener('mouseleave',()=>tip.style.opacity=0);
   });
 
   // переключатель подсветки задач Куцепалова (аутстафф Ракета)
@@ -620,6 +631,7 @@ function render(D){
   if(whoFilter) whoFilter.addEventListener('change',applyFilters);
   if(searchFilter) searchFilter.addEventListener('input',applyFilters);
   if(hideDone) hideDone.addEventListener('change',applyFilters);
+  applyFilters();  // применить стартовое состояние (скрыть реализованные по умолчанию)
 
 }
 
@@ -721,8 +733,6 @@ document.getElementById('saveCsvBtn').addEventListener('click',saveCsv);
 
 loadData().then(function(D){
   render(D);
-  var f=document.getElementById('srcNote');
-  if(f) f.textContent='Данные из tasks.csv · задач: '+D.plan.length+' (с датами: '+D.plan.filter(t=>t.hasDates).length+')';
 }).catch(function(e){
   document.getElementById('inner').innerHTML=
     '<div style="padding:28px;color:#b5714a;font:14px system-ui">'+
