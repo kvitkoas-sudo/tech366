@@ -149,6 +149,20 @@
         <option value="">Все</option>
       </select>
     </label>
+    <label class="it" style="margin-left:8px;gap:6px">
+      🔎 <input type="text" id="searchFilter" placeholder="Поиск: код или название" style="font-size:12px;padding:3px 8px;border:1px solid #c3c9d2;border-radius:6px;background:#fff;color:#2a3542;width:200px">
+    </label>
+    <label class="it" style="margin-left:8px;gap:6px">
+      👤 <span>Исполнитель:</span>
+      <select id="whoFilter" style="font-size:12px;padding:3px 8px;border:1px solid #c3c9d2;border-radius:6px;background:#fff;color:#2a3542;cursor:pointer">
+        <option value="">Все</option>
+      </select>
+    </label>
+    <label class="it toggle" style="margin-left:8px;cursor:pointer;user-select:none">
+      <input type="checkbox" id="hideDone" style="display:none">
+      <span class="switch"><span class="knob"></span></span>
+      <span>Скрыть реализованные</span>
+    </label>
   </div>
 
   <div class="chartwrap"><div class="chart"><div class="inner" id="inner"></div></div></div>
@@ -238,6 +252,7 @@ async function loadData(){
     const o={jira:t.jira,name:t.name,status:t.status,score:+t.score||0,
       seg:seg,hasDates:hasDates,
       fixed:t.fixed==='1',hatch:t.hatch==='1',
+      who:[...new Set([t.analysis_who,t.dev_who,t.test_who].map(x=>(x||'').trim()).filter(Boolean))],
       customers:(t.customers||'').split(',').map(s=>s.trim()).filter(Boolean)};
     if(hasDates){
       const alls=Object.values(seg).flatMap(v=>[v[0],v[4]]);
@@ -318,7 +333,7 @@ function render(D){
     // задачи без дат — только строка в списке, без полосок на таймлайне
     if(!t.hasDates){
       const custDetail0=(t.customers&&t.customers.length)?`🏢 Заказчик${t.customers.length>1?'и':''}: ${esc(t.customers.join(', '))}`:'';
-      rowsHtml+=`<div class="grow undated" data-customers="${esc((t.customers||[]).join('|'))}">
+      rowsHtml+=`<div class="grow undated" data-customers="${esc((t.customers||[]).join('|'))}" data-jira="${esc(t.jira)}" data-nm="${esc((t.name||'').toLowerCase())}" data-who="${esc((t.who||[]).join('|'))}" data-hatch="${t.hatch?1:0}">
         <div class="lbl"><span class="rank">${rank}</span>${codeLink(t.jira)}<div class="lbl-col"><span class="tname">${esc(t.name)}</span></div></div>
         <div class="track" data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="—" data-score="${t.score}" data-seg="Статус: ${esc(t.status)}${custDetail0?'<br>'+custDetail0:''}"><span class="noplan">${esc(t.status||'не запланировано')}</span></div>
       </div>`;
@@ -413,7 +428,7 @@ function render(D){
     const metaLine=`<div class="tmeta">${dr}${whoList.length?' · '+esc(whoList.join(' · ')):''}</div>`;
     // заказчики в тултип
     const custDetail = (t.customers&&t.customers.length)? `<br>🏢 <b>Заказчик${t.customers.length>1?'и':''}:</b> ${esc(t.customers.join(', '))}` : '';
-    rowsHtml+=`<div class="grow${t.hatch?' done-row':''}" data-customers="${esc((t.customers||[]).join('|'))}">
+    rowsHtml+=`<div class="grow${t.hatch?' done-row':''}" data-customers="${esc((t.customers||[]).join('|'))}" data-jira="${esc(t.jira)}" data-nm="${esc((t.name||'').toLowerCase())}" data-who="${esc((t.who||[]).join('|'))}" data-hatch="${t.hatch?1:0}">
       <div class="lbl"><span class="rank">${rank}</span>${codeLink(t.jira)}<div class="lbl-col"><span class="tname">${esc(t.name)}</span>${metaLine}</div></div>
       <div class="track" data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="${dates}" data-score="${t.score}" data-seg="${esc(segDetail)+vacDetail+custDetail}">${barHTML}${gapBars}</div>
     </div>`;
@@ -423,7 +438,7 @@ function render(D){
     rank++;
     const l=pct(t.start),r=pct(t.end),w=Math.max(1.4,r-l);
     const dates=new Date(t.start).toLocaleDateString('ru-RU')+' – '+new Date(t.end).toLocaleDateString('ru-RU');
-    rowsHtml+=`<div class="grow">
+    rowsHtml+=`<div class="grow" data-customers="${esc((t.customers||[]).join('|'))}" data-jira="${esc(t.jira)}" data-nm="${esc((t.name||'').toLowerCase())}" data-who="${esc((t.who||[]).join('|'))}" data-hatch="${t.hatch?1:0}">
       <div class="lbl"><span class="rank">✓</span>${codeLink(t.jira)}<div class="lbl-col"><span class="tname">${esc(t.name)}</span></div></div>
       <div class="track"><div class="bar done" style="left:${l}%;width:${w}%"
          data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="${dates}" data-score="${t.score||0}" data-seg="Реализовано"></div></div>
@@ -478,24 +493,53 @@ function render(D){
     });
   }
 
-  // фильтр по заказчику
+  // ЕДИНЫЙ фильтр списка: заказчик + поиск (код/название) + исполнитель + скрыть реализованные
   const custFilter=document.getElementById('custFilter');
+  const searchFilter=document.getElementById('searchFilter');
+  const whoFilter=document.getElementById('whoFilter');
+  const hideDone=document.getElementById('hideDone');
+
+  // наполнить список заказчиков
   if(custFilter){
-    // собрать уникальных заказчиков из данных
     const allCust=new Set();
     D.plan.forEach(t=>(t.customers||[]).forEach(c=>allCust.add(c)));
     [...allCust].sort((a,b)=>a.localeCompare(b,'ru')).forEach(c=>{
       const o=document.createElement('option');o.value=c;o.textContent=c;custFilter.appendChild(o);
     });
-    custFilter.addEventListener('change',()=>{
-      const v=custFilter.value;
-      document.querySelectorAll('.rows .grow').forEach(row=>{
-        const custs=(row.dataset.customers||'').split('|').filter(Boolean);
-        const show = !v || custs.includes(v);
-        row.style.display = show? '' : 'none';
-      });
+  }
+  // наполнить список исполнителей
+  if(whoFilter){
+    const allWho=new Set();
+    D.plan.forEach(t=>(t.who||[]).forEach(w=>allWho.add(w)));
+    [...allWho].sort((a,b)=>a.localeCompare(b,'ru')).forEach(w=>{
+      const o=document.createElement('option');o.value=w;o.textContent=w;whoFilter.appendChild(o);
     });
   }
+
+  function applyFilters(){
+    const cv=custFilter?custFilter.value:'';
+    const wv=whoFilter?whoFilter.value:'';
+    const q=(searchFilter?searchFilter.value:'').trim().toLowerCase();
+    const hd=hideDone?hideDone.checked:false;
+    document.querySelectorAll('.rows .grow').forEach(row=>{
+      const custs=(row.dataset.customers||'').split('|').filter(Boolean);
+      const whos=(row.dataset.who||'').split('|').filter(Boolean);
+      const jira=(row.dataset.jira||'').toLowerCase();
+      const nm=(row.dataset.nm||'');
+      const done=row.dataset.hatch==='1';
+      let show=true;
+      if(cv && !custs.includes(cv)) show=false;
+      if(wv && !whos.includes(wv)) show=false;
+      if(q && !(jira.includes(q) || nm.includes(q))) show=false;
+      if(hd && done) show=false;
+      row.style.display = show? '' : 'none';
+    });
+  }
+
+  if(custFilter) custFilter.addEventListener('change',applyFilters);
+  if(whoFilter) whoFilter.addEventListener('change',applyFilters);
+  if(searchFilter) searchFilter.addEventListener('input',applyFilters);
+  if(hideDone) hideDone.addEventListener('change',applyFilters);
 
 }
 
