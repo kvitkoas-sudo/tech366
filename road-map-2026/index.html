@@ -187,7 +187,8 @@
       <span class="switch"><span class="knob"></span></span>
       <span>Скрыть реализованные</span>
     </label>
-    <button id="saveCsvBtn" class="edit-btn" style="margin-left:auto">💾 Сохранить в CSV</button>
+    <button id="offlineBtn" class="edit-btn" style="margin-left:auto;background:#5a6673;border-color:#5a6673">⬇️ Офлайн версия</button>
+    <button id="saveCsvBtn" class="edit-btn" style="margin-left:8px">💾 Сохранить в CSV</button>
   </div>
 
   <div class="chartwrap"><div class="chart"><div class="inner" id="inner"></div></div></div>
@@ -274,13 +275,18 @@ function eachWorkOrAll(a,b){ // список ISO-дней [a..b] включит�
 }
 
 async function loadData(){
-  const bust='?t='+Date.now();
-  const [tRaw,rRaw]=await Promise.all(
-    ['tasks','resources'].map(k=>
-      fetch(BASE+FILES[k]+bust).then(r=>{
-        if(!r.ok) throw new Error(FILES[k]+': HTTP '+r.status);
-        return r.text();
-      })));
+  let tRaw, rRaw;
+  if(window.__EMBED_TASKS!=null && window.__EMBED_RES!=null){
+    tRaw=window.__EMBED_TASKS; rRaw=window.__EMBED_RES;   // офлайн: данные вшиты в файл
+  } else {
+    const bust='?t='+Date.now();
+    [tRaw,rRaw]=await Promise.all(
+      ['tasks','resources'].map(k=>
+        fetch(BASE+FILES[k]+bust).then(r=>{
+          if(!r.ok) throw new Error(FILES[k]+': HTTP '+r.status);
+          return r.text();
+        })));
+  }
   const tasks=parseCSV(tRaw), res=parseCSV(rRaw);
   // сохраняем сырые данные и порядок колонок для редактора/выгрузки CSV
   window.__COLS = (function(){
@@ -715,16 +721,39 @@ function applyEditor(){
 }
 
 function csvEscape(v){ v=(v==null?'':String(v)); return /[;"\n\r]/.test(v)? '"'+v.replace(/"/g,'""')+'"' : v; }
-function saveCsv(){
+function rawToCsv(){
   const cols=window.__COLS||[]; const rows=window.__RAW||[];
   const lines=[cols.join(';')];
   rows.forEach(r=>lines.push(cols.map(c=>csvEscape(r[c])).join(';')));
-  const text='\uFEFF'+lines.join('\r\n')+'\r\n';   // BOM + CRLF
-  const blob=new Blob([text],{type:'text/csv;charset=utf-8'});
+  return '\uFEFF'+lines.join('\r\n')+'\r\n';   // BOM + CRLF
+}
+function downloadBlob(text, filename, mime){
+  const blob=new Blob([text],{type:mime});
   const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob); a.download='tasks.csv';
+  a.href=URL.createObjectURL(blob); a.download=filename;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function saveCsv(){ downloadBlob(rawToCsv(),'tasks.csv','text/csv;charset=utf-8'); }
+
+function saveOffline(){
+  // текущие данные из памяти (с учётом правок редактора) -> CSV-строки
+  const resCols=(window.__RES&&window.__RES.length)?Object.keys(window.__RES[0]):[];
+  const resLines=[resCols.join(';')];
+  (window.__RES||[]).forEach(r=>resLines.push(resCols.map(c=>csvEscape(r[c])).join(';')));
+  const tasksCsv=rawToCsv();
+  const resCsv='\uFEFF'+resLines.join('\r\n')+'\r\n';
+  // скрипт, вшивающий данные (выполнится до основного кода, т.к. вставим первым)
+  const embed='<script>window.__EMBED_TASKS='+JSON.stringify(tasksCsv)+
+              ';window.__EMBED_RES='+JSON.stringify(resCsv)+';<\/script>\n';
+  // берём собственный HTML страницы
+  let html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+  // вставляем embed сразу после <head>
+  if(/<head[^>]*>/i.test(html)){ html=html.replace(/(<head[^>]*>)/i,'$1\n'+embed); }
+  else { html=embed+html; }
+  const date=new Date().toISOString().slice(0,10);
+  downloadBlob(html,'Дорожная_карта_ОФЛАЙН_'+date+'.html','text/html;charset=utf-8');
+  showToast('Офлайн-версия сохранена');
 }
 
 // делегирование кликов: полоса/название/даты -> редактор; код -> копировать ссылку
@@ -766,6 +795,7 @@ document.getElementById('emCancel').addEventListener('click',closeEditor);
 document.getElementById('emApply').addEventListener('click',applyEditor);
 document.getElementById('editModal').addEventListener('click',function(ev){ if(ev.target===this) closeEditor(); });
 document.getElementById('saveCsvBtn').addEventListener('click',saveCsv);
+document.getElementById('offlineBtn').addEventListener('click',saveOffline);
 
 loadData().then(function(D){
   render(D);
