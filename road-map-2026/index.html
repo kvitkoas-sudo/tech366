@@ -100,6 +100,15 @@
   .grow.undated .track{background:transparent}
   .noplan{position:absolute;left:6px;top:30px;font-size:10px;color:#9aa4b2;font-style:italic;
     background:#f1f3f6;border:1px dashed #d3d9e0;border-radius:4px;padding:1px 8px}
+  /* P10 — блок статуса для задач без дат и на паузе: размер и рамка как у полосы, стиль паузы;
+     при горизонтальной прокрутке приклеивается к левому краю области дат */
+  .statusbox{position:sticky;left:calc(var(--gutter,396px) + 8px);z-index:4;
+    display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;
+    height:30px;min-width:120px;margin:24px 0 0 8px;padding:0 16px;border-radius:6px;
+    background:repeating-linear-gradient(45deg,#eef0f3,#eef0f3 5px,#e4e7ec 5px,#e4e7ec 10px);
+    border:1px dashed #9aa4b2;font-size:12.5px;font-weight:600;color:#5a6673;white-space:nowrap;cursor:pointer}
+  .statusbox:hover{border-color:#2e6da4;color:#2e6da4}
+  .grow.paused .statusbox{border-style:solid;border-color:#8a93a0;color:#3a4757}
   .highlight-kuc .seg-bar.kuc{background:#e8890c !important;border:1.5px solid #9a5a00;box-shadow:0 0 0 2px rgba(232,137,12,.35),0 1px 3px rgba(154,90,0,.4);height:22px;top:9px}
   .highlight-kuc .seg-bar.kuc .seg-cap{color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.3)}
   .highlight-kuc .grow:has(.seg-bar.kuc){background:#fff7ec}
@@ -186,6 +195,11 @@
       <input type="checkbox" id="hideDone" checked style="display:none">
       <span class="switch"><span class="knob"></span></span>
       <span>Скрыть реализованные</span>
+    </label>
+    <label class="it toggle" style="margin-left:8px;cursor:pointer;user-select:none">
+      <input type="checkbox" id="hidePause" style="display:none">
+      <span class="switch"><span class="knob"></span></span>
+      <span>Скрыть паузу</span>
     </label>
     <button id="offlineBtn" class="edit-btn" style="margin-left:auto;background:#5a6673;border-color:#5a6673">⬇️ Офлайн версия</button>
     <button id="saveCsvBtn" class="edit-btn" style="margin-left:8px">💾 Сохранить в CSV</button>
@@ -326,13 +340,18 @@ function buildD(tasks,res){
       const ov=vacOverlap(seg[k][2],seg[k][0],seg[k][4]);
       if(ov) gaps.push([ov[0],ov[1],'Отпуск '+seg[k][2],'vac']);
     });
+    const pause=(t.status||'').trim()==='Пауза';
     const o={jira:t.jira,name:t.name,status:t.status,score:+t.score||0,
-      seg:seg,hasDates:hasDates,
+      seg:seg,hasDates:hasDates && !pause,pause:pause,
       fixed:t.fixed==='1',hatch:t.hatch==='1',
       who:[...new Set([t.analysis_who,t.dev_who,t.test_who].map(x=>(x||'').trim()).filter(Boolean))],
       customers:(t.customers||'').split(',').map(s=>s.trim()).filter(Boolean),
       _raw:t};
-    if(hasDates){
+    if(pause && hasDates){ // P10: даты на паузе не рисуем и не считаем, но показываем в тултипе
+      const al=Object.values(seg).flatMap(v=>[v[0],v[4]]);
+      o.pauseDates=new Date(al.reduce((a,b)=>a<b?a:b)).toLocaleDateString('ru-RU')+' – '+new Date(al.reduce((a,b)=>a>b?a:b)).toLocaleDateString('ru-RU');
+    }
+    if(hasDates && !pause){
       const alls=Object.values(seg).flatMap(v=>[v[0],v[4]]);
       o.start=alls.reduce((a,b)=>a<b?a:b);
       o.disp_end=alls.reduce((a,b)=>a>b?a:b);
@@ -344,9 +363,10 @@ function buildD(tasks,res){
 
   const doneT=plan.filter(t=>t.hasDates && t.hatch).sort((a,b)=> a.start.localeCompare(b.start));
   const activeT=plan.filter(t=>t.hasDates && !t.hatch).sort((a,b)=> a.start.localeCompare(b.start));
-  const undated=plan.filter(t=>!t.hasDates).sort((a,b)=> b.score-a.score);
+  const undated=plan.filter(t=>!t.hasDates && !t.pause).sort((a,b)=> b.score-a.score);
+  const paused=plan.filter(t=>t.pause).sort((a,b)=> b.score-a.score);   // P10: пауза — в самом конце
 
-  return {plan:doneT.concat(activeT,undated),done:[],resources:res,vac:vac};
+  return {plan:doneT.concat(activeT,undated,paused),done:[],resources:res,vac:vac};
 }
 function render(D){
   const GUTTER=396;
@@ -410,9 +430,11 @@ function render(D){
     // задачи без дат — только строка в списке, без полосок на таймлайне
     if(!t.hasDates){
       const custDetail0=(t.customers&&t.customers.length)?`🏢 Заказчик${t.customers.length>1?'и':''}: ${esc(t.customers.join(', '))}`:'';
-      rowsHtml+=`<div class="grow undated" data-customers="${esc((t.customers||[]).join('|'))}" data-jira="${esc(t.jira)}" data-nm="${esc((t.name||'').toLowerCase())}" data-who="${esc((t.who||[]).join('|'))}" data-hatch="${t.hatch?1:0}">
+      const stLabel=t.pause?'Пауза':(t.status||'не запланировано');
+      const dts=t.pause&&t.pauseDates?('план до паузы: '+t.pauseDates):'—';
+      rowsHtml+=`<div class="grow undated${t.pause?' paused':''}" data-pause="${t.pause?1:0}" data-customers="${esc((t.customers||[]).join('|'))}" data-jira="${esc(t.jira)}" data-nm="${esc((t.name||'').toLowerCase())}" data-who="${esc((t.who||[]).join('|'))}" data-hatch="${t.hatch?1:0}">
         <div class="lbl"><span class="rank">${rank}</span>${codeLink(t.jira)}<div class="lbl-col"><span class="tname">${esc(t.name)}</span></div></div>
-        <div class="track" data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="—" data-score="${t.score}" data-seg="Статус: ${esc(t.status)}${custDetail0?'<br>'+custDetail0:''}"><span class="noplan">${esc(t.status||'не запланировано')}</span></div>
+        <div class="track" data-code="${esc(t.jira)}" data-name="${esc(t.name)}" data-dates="${esc(dts)}" data-score="${t.score}" data-seg="Статус: ${esc(stLabel)}${custDetail0?'<br>'+custDetail0:''}"><span class="statusbox">${esc(stLabel)}</span></div>
       </div>`;
       return;
     }
@@ -583,7 +605,7 @@ function render(D){
 
   // тултип — только при наведении на саму полосу задачи (.taskbar)
   const tip=document.getElementById('tip');
-  document.querySelectorAll('.taskbar').forEach(bar=>{
+  document.querySelectorAll('.taskbar, .statusbox').forEach(bar=>{
     const b=bar.closest('.track[data-code]'); if(!b) return;
     bar.addEventListener('mousemove',ev=>{
       tip.innerHTML=`<b>${b.dataset.code}</b> · приоритет ${b.dataset.score} б.<br>${b.dataset.name}<br>📅 ${b.dataset.dates}<br><span class="seg">${b.dataset.seg}</span>`;
@@ -606,6 +628,7 @@ function render(D){
   const searchFilter=document.getElementById('searchFilter');
   const whoFilter=document.getElementById('whoFilter');
   const hideDone=document.getElementById('hideDone');
+  const hidePause=document.getElementById('hidePause');
 
   // наполнить список заказчиков
   if(custFilter){
@@ -629,6 +652,7 @@ function render(D){
     const wv=whoFilter?whoFilter.value:'';
     const q=(searchFilter?searchFilter.value:'').trim().toLowerCase();
     const hd=hideDone?hideDone.checked:false;
+    const hp=hidePause?hidePause.checked:false;
     document.querySelectorAll('.rows .grow').forEach(row=>{
       const custs=(row.dataset.customers||'').split('|').filter(Boolean);
       const whos=(row.dataset.who||'').split('|').filter(Boolean);
@@ -640,6 +664,7 @@ function render(D){
       if(wv && !whos.includes(wv)) show=false;
       if(q && !(jira.includes(q) || nm.includes(q))) show=false;
       if(hd && done) show=false;
+      if(hp && row.dataset.pause==='1') show=false;
       row.style.display = show? '' : 'none';
     });
   }
@@ -648,6 +673,7 @@ function render(D){
   if(whoFilter) whoFilter.addEventListener('change',applyFilters);
   if(searchFilter) searchFilter.addEventListener('input',applyFilters);
   if(hideDone) hideDone.addEventListener('change',applyFilters);
+  if(hidePause) hidePause.addEventListener('change',applyFilters);
   applyFilters();  // применить стартовое состояние (скрыть реализованные по умолчанию)
 
 }
